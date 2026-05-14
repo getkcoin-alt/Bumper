@@ -3,70 +3,12 @@ import { supabase } from "../utils/supabase";
 
 // ── Seed Data ─────────────────────────────────────────────────────────────────
 const SEED = {
-  firms: [
-    { id: "f1", name: "Sharma Transport Co.", createdAt: "2024-01-10" },
-    { id: "f2", name: "Rajasthan Dumpers Ltd.", createdAt: "2024-02-15" },
-  ],
-  users: [
-    { id: "u1", name: "Ramesh Sharma", mobile: "9876543210", firmId: "f1", role: "partner" },
-    { id: "u2", name: "Suresh Patel", mobile: "9812345678", firmId: "f1", role: "partner" },
-    { id: "u3", name: "Dinesh Gupta", mobile: "9898989898", firmId: "f2", role: "partner" },
-    { id: "u4", name: "Mahesh Kumar", mobile: "9001234567", firmId: "f2", role: "partner" },
-  ],
-  vehicles: [
-    { id: "v1", firmId: "f1", number: "RJ-14-GA-4521", type: "Dumper" },
-    { id: "v2", firmId: "f1", number: "RJ-14-GB-1102", type: "Dumper" },
-    { id: "v3", firmId: "f2", number: "RJ-22-CA-8877", type: "Dumper" },
-  ],
-  expenses: [
-    { id: "e1", firmId: "f1", label: "Diesel", amount: 120, perTrip: true },
-    { id: "e2", firmId: "f1", label: "Driver Wages", amount: 80, perTrip: true },
-    { id: "e3", firmId: "f1", label: "Maintenance", amount: 30, perTrip: false },
-    { id: "e4", firmId: "f2", label: "Diesel", amount: 110, perTrip: true },
-    { id: "e5", firmId: "f2", label: "Driver Wages", amount: 75, perTrip: true },
-  ],
-  trips: [
-    {
-      id: "t1", firmId: "f1", clientName: "Anand Builders", partnerId: "u1",
-      driverName: "Balu Singh", vehicleId: "v1", place: "Kota Stone Quarry",
-      item: "Stone", tripCount: 4, ratePerTrip: 800,
-      date: "2025-05-10", note: "", locked: true,
-    },
-    {
-      id: "t2", firmId: "f1", clientName: "Sharma Constructions", partnerId: "u2",
-      driverName: "Ramu Lal", vehicleId: "v2", place: "Ramganj Mandi",
-      item: "Sand (plain)", tripCount: 6, ratePerTrip: 650,
-      date: "2025-05-11", note: "", locked: true,
-    },
-    {
-      id: "t3", firmId: "f2", clientName: "City Infra", partnerId: "u3",
-      driverName: "Gopal Das", vehicleId: "v3", place: "Bundi Road",
-      item: "Gravel", tripCount: 3, ratePerTrip: 700,
-      date: "2025-05-12", note: "", locked: true,
-    },
-  ],
-  transactions: [
-    {
-      id: "tx1", firmId: "f1", partnerId: "u1", type: "credit",
-      amount: 5000, category: "Client Payment", description: "Payment from Anand Builders",
-      date: "2025-01-15", referenceNumber: "PAY-001", paymentMethod: "Bank Transfer"
-    },
-    {
-      id: "tx2", firmId: "f1", partnerId: "u1", type: "debit",
-      amount: 2000, category: "Fuel Purchase", description: "Bulk diesel purchase",
-      date: "2025-01-16", referenceNumber: "EXP-001", paymentMethod: "Cash"
-    },
-    {
-      id: "tx3", firmId: "f1", partnerId: "u2", type: "credit",
-      amount: 4200, category: "Client Payment", description: "Payment from Sharma Constructions",
-      date: "2025-01-20", referenceNumber: "PAY-003", paymentMethod: "Cheque"
-    },
-    {
-      id: "tx4", firmId: "f2", partnerId: "u3", type: "credit",
-      amount: 6000, category: "Client Payment", description: "Payment from City Infra",
-      date: "2025-01-14", referenceNumber: "PAY-101", paymentMethod: "Bank Transfer"
-    },
-  ],
+  firms: [],
+  users: [],
+  vehicles: [],
+  expenses: [],
+  trips: [],
+  transactions: [],
 };
 
 const ITEMS = ["Stone", "Concrete", "Pubba", "Bricks", "Soil", "Gravel", "Sand (plain)", "Sand (unplain)"];
@@ -456,7 +398,7 @@ function LoginScreen({ users, firms, onLogin }) {
                   <tr>
                     <td colSpan={5}>
                       <div className="empty" style={{ padding: '24px' }}>
-                        <p>No partners found for selected firm</p>
+                        <p>No partners available. Admin can add partners from Admin Panel.</p>
                       </div>
                     </td>
                   </tr>
