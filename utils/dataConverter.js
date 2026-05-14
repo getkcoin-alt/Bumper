@@ -52,6 +52,7 @@ export const dbToApp = {
     note: db.note,
     expenses: db.expenses || {},
     editedProfit: db.edited_profit !== null && db.edited_profit !== undefined ? Number(db.edited_profit) : undefined,
+    clientPaid: Number(db.client_paid || 0),
     locked: db.locked,
     createdAt: db.created_at,
   }),
@@ -96,6 +97,7 @@ export const appToDb = {
     date: app.date,
     note: app.note || '',
     expenses: app.expenses || {},
+    client_paid: app.clientPaid || 0,
     locked: app.locked !== undefined ? app.locked : true,
   }),
 };

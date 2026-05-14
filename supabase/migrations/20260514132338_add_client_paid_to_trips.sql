@@ -1,0 +1,1 @@
+ALTER TABLE trips ADD COLUMN client_paid NUMERIC DEFAULT 0;

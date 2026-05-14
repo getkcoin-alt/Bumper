@@ -421,6 +421,21 @@ function useStore() {
     }
   };
 
+  const updateClientPaid = async (tripId, amount) => {
+    try {
+      const { error } = await supabase
+        .from('trips')
+        .update({ client_paid: amount })
+        .eq('id', tripId);
+      if (error) throw error;
+      setTrips(p => p.map(t => t.id === tripId ? { ...t, clientPaid: amount } : t));
+    } catch (error) {
+      console.error('Error updating client paid:', error);
+      alert('Failed to update payment');
+      throw error;
+    }
+  };
+
   const addTransaction = async (data) => {
     try {
       const { data: dbData, error } = await supabase
@@ -474,9 +489,10 @@ function useStore() {
     }, 0);
 
     const calculatedProfit = income - totalExp;
-    // Use edited profit if available, otherwise use calculated
     const profit = trip.editedProfit !== undefined ? trip.editedProfit : calculatedProfit;
-    return { income, totalExp, profit, calculatedProfit };
+    const clientPaid = trip.clientPaid || 0;
+    const pending = income - clientPaid;
+    return { income, totalExp, profit, calculatedProfit, clientPaid, pending };
   };
 
   // Firm summary
@@ -490,8 +506,9 @@ function useStore() {
       acc.expense += c.totalExp;
       acc.profit += c.profit;
       acc.trips += t.tripCount;
+      acc.totalPending += c.pending;
       return acc;
-    }, { income: 0, expense: 0, profit: 0, trips: 0 });
+    }, { income: 0, expense: 0, profit: 0, trips: 0, totalPending: 0 });
     
     const transactionSummary = ftransactions.reduce((acc, tx) => {
       if (tx.type === 'credit') {
@@ -515,7 +532,7 @@ function useStore() {
     firms, users, vehicles, expenses, trips, transactions, currentUser, setCurrentUser, loading,
 
     firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions,
-    addFirm, addUser, addVehicle, addExpense, addTrip, updateTripProfit, addTransaction,
+    addFirm, addUser, addVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction,
     calcTrip, firmSummary,
   };
 }
@@ -754,6 +771,8 @@ function UserPanel({ store, user }) {
   const [tripDetail, setTripDetail] = useState(null);
   const [editingProfit, setEditingProfit] = useState(false);
   const [editedProfitValue, setEditedProfitValue] = useState("");
+  const [editingClientPaid, setEditingClientPaid] = useState(false);
+  const [clientPaidValue, setClientPaidValue] = useState("");
 
   const firm = store.firms.find(f => f.id === user.firmId);
   const partners = store.firmUsers(user.firmId);
@@ -908,9 +927,16 @@ function UserPanel({ store, user }) {
                   <div className="stat-sub">All firm expenses</div>
                 </div>
                 <div className="stat-card teal">
-                  <div className="stat-label">Net Profit</div>
-                  <div className="stat-value">{fmt(summary.profit)}</div>
-                  <div className="stat-sub">{summary.profit >= 0 ? "✓ Profitable" : "⚠ Loss"}</div>
+                  <div className="stat-label">My Net Profit</div>
+                  <div className="stat-value">{(() => {
+                    const myTrips = trips.filter(t => t.partnerId === user.id);
+                    const myTripProfit = myTrips.reduce((s, t) => s + store.calcTrip(t).profit, 0);
+                    const myTx = transactions.filter(tx => tx.partnerId === user.id);
+                    const myCredits = myTx.filter(tx => tx.type === 'credit').reduce((s, tx) => s + tx.amount, 0);
+                    const myDebits = myTx.filter(tx => tx.type === 'debit').reduce((s, tx) => s + tx.amount, 0);
+                    return fmt(myTripProfit + myCredits - myDebits);
+                  })()}</div>
+                  <div className="stat-sub">Trips + Credits − Debits</div>
                 </div>
                 <div className="stat-card blue">
                   <div className="stat-label">Total Trips</div>
@@ -1061,9 +1087,9 @@ function UserPanel({ store, user }) {
               <div className="card">
                 <div className="table-wrap">
                   <table>
-                    <thead><tr><th>Date</th><th>Client</th><th>Place</th><th>Item</th><th>Driver</th><th>Vehicle</th><th>Trips</th><th>Rate</th><th>Income</th><th>Expenses</th><th>Profit</th><th>Partner</th><th></th></tr></thead>
+                    <thead><tr><th>Date</th><th>Client</th><th>Place</th><th>Item</th><th>Driver</th><th>Vehicle</th><th>Trips</th><th>Rate</th><th>Income</th><th>Received</th><th>Pending</th><th>Expenses</th><th>Profit</th><th>Partner</th><th></th></tr></thead>
                     <tbody>
-                      {trips.length === 0 && <tr><td colSpan={13}><div className="empty"><p>No trips yet. Add the first trip.</p></div></td></tr>}
+                      {trips.length === 0 && <tr><td colSpan={15}><div className="empty"><p>No trips yet. Add the first trip.</p></div></td></tr>}
                       {[...trips].reverse().map(t => {
                         const c = store.calcTrip(t);
                         const by = partners.find(p => p.id === t.partnerId);
@@ -1080,6 +1106,8 @@ function UserPanel({ store, user }) {
                             <td className="td-bold">{t.tripCount}</td>
                             <td>{fmt(t.ratePerTrip)}</td>
                             <td className="td-accent">{fmt(c.income)}</td>
+                            <td className="td-teal">{fmt(c.clientPaid)}</td>
+                            <td className={c.pending > 0 ? "td-red" : "td-teal"}>{fmt(c.pending)}</td>
                             <td className="td-red">{fmt(c.totalExp)}</td>
                             <td className={c.profit >= 0 ? "td-teal" : "td-red"}>
                               {fmt(c.profit)}
@@ -1591,8 +1619,22 @@ function UserPanel({ store, user }) {
           setEditedProfitValue("");
         };
         
+        const handleEditClientPaid = () => {
+          setEditingClientPaid(true);
+          setClientPaidValue(c.clientPaid.toString());
+        };
+
+        const handleSaveClientPaid = () => {
+          const amount = Number(clientPaidValue);
+          if (!isNaN(amount) && amount >= 0) {
+            store.updateClientPaid(tripDetail.id, amount);
+            setEditingClientPaid(false);
+            setTripDetail({ ...tripDetail, clientPaid: amount });
+          }
+        };
+
         return (
-          <Modal title="Trip Detail" onClose={() => { setTripDetail(null); setEditingProfit(false); setEditedProfitValue(""); }}>
+          <Modal title="Trip Detail" onClose={() => { setTripDetail(null); setEditingProfit(false); setEditedProfitValue(""); setEditingClientPaid(false); setClientPaidValue(""); }}>
             <div style={{ display: "grid", gap: 12 }}>
               <div className="grid g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {[['Client', tripDetail.clientName], ['Date', tripDetail.date], ['Driver', tripDetail.driverName], ['Vehicle', veh?.number], ['Place', tripDetail.place], ['Item', tripDetail.item], ['No. of Trips', tripDetail.tripCount], ['Rate/Trip', fmt(tripDetail.ratePerTrip)], ['Entered by', by?.name]].map(([k, v]) => (
@@ -1602,6 +1644,33 @@ function UserPanel({ store, user }) {
                   </div>
                 ))}
               </div>
+              <div className="card-sm" style={{ background: "var(--bg3)" }}>
+                <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Payment Status</div>
+                <div className="exp-row">
+                  <span className="er-label">Invoice (Income)</span>
+                  <span className="er-val">{fmt(c.income)}</span>
+                </div>
+                <div className="exp-row" style={{ alignItems: "center" }}>
+                  <span className="er-label">Amount Received</span>
+                  {!editingClientPaid ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "var(--teal)", fontWeight: 600, fontFamily: "Syne" }}>{fmt(c.clientPaid)}</span>
+                      <button className="btn btn-outline btn-sm" onClick={handleEditClientPaid} style={{ padding: "4px 8px", fontSize: 11 }}>Update</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <input type="number" min="0" value={clientPaidValue} onChange={e => setClientPaidValue(e.target.value)} style={{ width: 120, padding: "4px 8px", fontSize: 13 }} autoFocus />
+                      <button className="btn btn-primary btn-sm" onClick={handleSaveClientPaid} style={{ padding: "4px 8px", fontSize: 11 }}>Save</button>
+                      <button className="btn btn-outline btn-sm" onClick={() => setEditingClientPaid(false)} style={{ padding: "4px 8px", fontSize: 11 }}>Cancel</button>
+                    </div>
+                  )}
+                </div>
+                <div style={{ borderTop: "1px solid var(--border2)", marginTop: 8, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontWeight: 600 }}>Pending</span>
+                  <span style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 16, color: c.pending > 0 ? "var(--red)" : "var(--teal)" }}>{fmt(c.pending)}</span>
+                </div>
+              </div>
+
               <div className="card-sm" style={{ background: "var(--bg3)" }}>
                 <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Financial Breakdown</div>
                 <div className="exp-row"><span className="er-label">Income</span><span className="er-val">{fmt(c.income)}</span></div>
