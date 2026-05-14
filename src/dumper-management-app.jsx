@@ -327,6 +327,9 @@ function useStore() {
     const t = { id: uid(), ...data, locked: true };
     setTrips(p => [...p, t]);
   };
+  const updateTripProfit = (tripId, newProfit) => {
+    setTrips(p => p.map(t => t.id === tripId ? { ...t, editedProfit: newProfit } : t));
+  };
 
   // Calculate totals for a trip
   const calcTrip = (trip) => {
@@ -342,8 +345,10 @@ function useStore() {
       return s + amt;
     }, 0);
 
-    const profit = income - totalExp;
-    return { income, totalExp, profit };
+    const calculatedProfit = income - totalExp;
+    // Use edited profit if available, otherwise use calculated
+    const profit = trip.editedProfit !== undefined ? trip.editedProfit : calculatedProfit;
+    return { income, totalExp, profit, calculatedProfit };
   };
 
   // Firm summary
@@ -365,7 +370,7 @@ function useStore() {
     firms, users, vehicles, expenses, trips, todos, currentUser, setCurrentUser,
 
     firmUsers, firmVehicles, firmExpenses, firmTrips,
-    addFirm, addUser, addVehicle, addExpense, addTrip,
+    addFirm, addUser, addVehicle, addExpense, addTrip, updateTripProfit,
     calcTrip, firmSummary,
   };
 }
@@ -579,6 +584,8 @@ function UserPanel({ store, user }) {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [tripDetail, setTripDetail] = useState(null);
+  const [editingProfit, setEditingProfit] = useState(false);
+  const [editedProfitValue, setEditedProfitValue] = useState("");
 
   const todos = store.todos || [];
 
@@ -744,6 +751,7 @@ function UserPanel({ store, user }) {
                       {[...trips].reverse().slice(0, 6).map(t => {
                         const c = store.calcTrip(t);
                         const by = partners.find(p => p.id === t.partnerId);
+                        const isEdited = t.editedProfit !== undefined;
                         return (
                           <tr key={t.id} style={{ cursor: "pointer" }} onClick={() => setTripDetail(t)}>
                             <td>{t.date}</td>
@@ -751,7 +759,10 @@ function UserPanel({ store, user }) {
                             <td><span className="badge badge-purple">{t.item}</span></td>
                             <td>{t.tripCount}</td>
                             <td className="td-accent">{fmt(c.income)}</td>
-                            <td className={c.profit >= 0 ? "td-teal" : "td-red"}>{fmt(c.profit)}</td>
+                            <td className={c.profit >= 0 ? "td-teal" : "td-red"}>
+                              {fmt(c.profit)}
+                              {isEdited && <span style={{ fontSize: 9, marginLeft: 4, opacity: 0.7 }}>✎</span>}
+                            </td>
                             <td><span className="badge badge-gray">{by?.name?.split(" ")[0]}</span></td>
                           </tr>
                         );
@@ -787,6 +798,7 @@ function UserPanel({ store, user }) {
                         const c = store.calcTrip(t);
                         const by = partners.find(p => p.id === t.partnerId);
                         const veh = vehicles.find(v => v.id === t.vehicleId);
+                        const isEdited = t.editedProfit !== undefined;
                         return (
                           <tr key={t.id}>
                             <td>{t.date}</td>
@@ -799,7 +811,10 @@ function UserPanel({ store, user }) {
                             <td>{fmt(t.ratePerTrip)}</td>
                             <td className="td-accent">{fmt(c.income)}</td>
                             <td className="td-red">{fmt(c.totalExp)}</td>
-                            <td className={c.profit >= 0 ? "td-teal" : "td-red"}>{fmt(c.profit)}</td>
+                            <td className={c.profit >= 0 ? "td-teal" : "td-red"}>
+                              {fmt(c.profit)}
+                              {isEdited && <span style={{ fontSize: 9, marginLeft: 4, opacity: 0.7 }}>✎</span>}
+                            </td>
                             <td><span className="badge badge-gray">{by?.name?.split(" ")[0]}</span></td>
                             <td><button className="btn btn-outline btn-sm" onClick={() => setTripDetail(t)}>Detail</button></td>
                           </tr>
@@ -1125,8 +1140,30 @@ function UserPanel({ store, user }) {
         const c = store.calcTrip(tripDetail);
         const by = partners.find(p => p.id === tripDetail.partnerId);
         const veh = vehicles.find(v => v.id === tripDetail.vehicleId);
+        const isEdited = tripDetail.editedProfit !== undefined;
+        
+        const handleEditProfit = () => {
+          setEditingProfit(true);
+          setEditedProfitValue(c.profit.toString());
+        };
+        
+        const handleSaveProfit = () => {
+          const newProfit = Number(editedProfitValue);
+          if (!isNaN(newProfit)) {
+            store.updateTripProfit(tripDetail.id, newProfit);
+            setEditingProfit(false);
+            // Update the tripDetail to reflect changes
+            setTripDetail({ ...tripDetail, editedProfit: newProfit });
+          }
+        };
+        
+        const handleCancelEdit = () => {
+          setEditingProfit(false);
+          setEditedProfitValue("");
+        };
+        
         return (
-          <Modal title="Trip Detail" onClose={() => setTripDetail(null)}>
+          <Modal title="Trip Detail" onClose={() => { setTripDetail(null); setEditingProfit(false); setEditedProfitValue(""); }}>
             <div style={{ display: "grid", gap: 12 }}>
               <div className="grid g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {[['Client', tripDetail.clientName], ['Date', tripDetail.date], ['Driver', tripDetail.driverName], ['Vehicle', veh?.number], ['Place', tripDetail.place], ['Item', tripDetail.item], ['No. of Trips', tripDetail.tripCount], ['Rate/Trip', fmt(tripDetail.ratePerTrip)], ['Entered by', by?.name]].map(([k, v]) => (
@@ -1145,14 +1182,38 @@ function UserPanel({ store, user }) {
                     <span style={{ color: "var(--red)", fontSize: 13 }}>– {fmt(e.perTrip ? e.amount * tripDetail.tripCount : e.amount)}</span>
                   </div>
                 ))}
-                <div style={{ borderTop: "1px solid var(--border2)", marginTop: 8, paddingTop: 10, display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontWeight: 600 }}>Net Profit</span>
-                  <span style={{ fontFamily: "Syne", fontWeight: 700, color: c.profit >= 0 ? "var(--teal)" : "var(--red)" }}>{fmt(c.profit)}</span>
+                <div style={{ borderTop: "1px solid var(--border2)", marginTop: 8, paddingTop: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <span style={{ fontWeight: 600 }}>Net Profit {isEdited && <span style={{ fontSize: 10, color: "var(--accent)" }}>(Edited)</span>}</span>
+                    {!editingProfit ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontFamily: "Syne", fontWeight: 700, color: c.profit >= 0 ? "var(--teal)" : "var(--red)" }}>{fmt(c.profit)}</span>
+                        <button className="btn btn-outline btn-sm" onClick={handleEditProfit} style={{ padding: "4px 8px", fontSize: 11 }}>Edit</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <input
+                          type="number"
+                          value={editedProfitValue}
+                          onChange={(e) => setEditedProfitValue(e.target.value)}
+                          style={{ width: 120, padding: "4px 8px", fontSize: 13 }}
+                          autoFocus
+                        />
+                        <button className="btn btn-primary btn-sm" onClick={handleSaveProfit} style={{ padding: "4px 8px", fontSize: 11 }}>Save</button>
+                        <button className="btn btn-outline btn-sm" onClick={handleCancelEdit} style={{ padding: "4px 8px", fontSize: 11 }}>Cancel</button>
+                      </div>
+                    )}
+                  </div>
+                  {isEdited && c.calculatedProfit !== c.profit && (
+                    <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>
+                      Original calculated: {fmt(c.calculatedProfit)}
+                    </div>
+                  )}
                 </div>
               </div>
               {tripDetail.note && <div className="card-sm"><div style={{ fontSize: 11, color: "var(--text3)" }}>Note</div><div style={{ marginTop: 2 }}>{tripDetail.note}</div></div>}
               <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text3)", padding: "6px 0" }}>
-                {Icon.lock} This entry is locked and cannot be edited or deleted.
+                {Icon.lock} This entry is locked. Only profit can be edited by partners.
               </div>
             </div>
           </Modal>
