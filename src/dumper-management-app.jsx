@@ -254,7 +254,8 @@ select option{background:var(--bg3)}
   .nav-section{display:none}
   .nav-item{flex-direction:column;gap:3px;padding:8px 12px;font-size:10px;min-width:64px}
   .nav-item svg{width:18px;height:18px}
-  .sidebar-footer{display:none}
+  .sidebar-footer{margin-left:auto;padding:8px;border-top:none;border-left:1px solid var(--border)}
+  .logout-btn{padding:8px 12px;font-size:11px;white-space:nowrap}
   .main{overflow-y:auto}
   .g2,.g3,.g4{grid-template-columns:1fr}
   .fg2,.fg3{grid-template-columns:1fr}
