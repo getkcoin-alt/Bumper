@@ -116,22 +116,22 @@ h1,h2,h3,h4{font-family:'Syne',sans-serif;font-weight:700}
 .main{flex:1;overflow-y:auto;background:var(--bg)}
 
 /* sidebar */
-.sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid var(--border)}
-.sidebar-logo .logo-icon{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
-.sidebar-logo .logo-icon svg{width:20px;height:20px;fill:#0d1117}
-.sidebar-logo h2{font-size:15px;color:var(--text);letter-spacing:-.3px}
-.sidebar-logo p{font-size:11px;color:var(--text3);margin-top:2px}
-.firm-badge{margin:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:12px}
-.firm-badge .fb-label{color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.8px}
-.firm-badge .fb-name{color:var(--accent);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;margin-top:2px}
-.nav-section{padding:8px 10px 4px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-top:8px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;margin:2px 8px;border-radius:var(--radius);cursor:pointer;font-size:13.5px;color:var(--text2);transition:all .15s;border:none;background:none;width:calc(100% - 16px);text-align:left}
+.sidebar-logo{padding:16px 16px 12px;border-bottom:1px solid var(--border)}
+.sidebar-logo .logo-icon{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:6px}
+.sidebar-logo .logo-icon svg{width:16px;height:16px;fill:#0d1117}
+.sidebar-logo h2{font-size:14px;color:var(--text);letter-spacing:-.3px;font-weight:600}
+.sidebar-logo p{font-size:10px;color:var(--text3);margin-top:2px}
+.firm-badge{margin:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-size:11px}
+.firm-badge .fb-label{color:var(--text3);font-size:9px;text-transform:uppercase;letter-spacing:.8px}
+.firm-badge .fb-name{color:var(--accent);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;margin-top:2px}
+.nav-section{padding:6px 10px 3px;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-top:6px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 12px;margin:2px 8px;border-radius:var(--radius);cursor:pointer;font-size:13px;color:var(--text2);transition:all .15s;border:none;background:none;width:calc(100% - 16px);text-align:left}
 .nav-item:hover{background:var(--bg3);color:var(--text)}
 .nav-item.active{background:var(--accent-dim);color:var(--accent);font-weight:500}
 .nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.7}
 .nav-item.active svg{opacity:1}
-.sidebar-footer{margin-top:auto;padding:14px;border-top:1px solid var(--border)}
-.logout-btn{width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s}
+.sidebar-footer{margin-top:auto;padding:12px;border-top:1px solid var(--border)}
+.logout-btn{width:100%;padding:7px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
 .logout-btn:hover{background:var(--red-dim);color:var(--red);border-color:var(--red)}
 
 /* topbar */
@@ -219,17 +219,26 @@ select option{background:var(--bg3)}
 
 /* login */
 .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}
-.login-card{width:100%;max-width:400px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px;box-shadow:var(--shadow)}
-.login-logo{text-align:center;margin-bottom:28px}
-.login-logo .icon{width:52px;height:52px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
-.login-logo h1{font-size:22px;letter-spacing:-.4px}
-.login-logo p{font-size:13px;color:var(--text3);margin-top:4px}
+.login-card{width:100%;max-width:400px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;box-shadow:var(--shadow)}
+.login-logo{text-align:center;margin-bottom:24px}
+.login-logo .icon{width:48px;height:48px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.login-logo .icon svg{width:26px;height:26px}
+.login-logo h1{font-size:20px;letter-spacing:-.4px;font-weight:700}
+.login-logo p{font-size:12px;color:var(--text3);margin-top:4px}
 .user-list{display:flex;flex-direction:column;gap:8px;margin-top:16px}
-.user-tile{padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .15s}
-.user-tile:hover{border-color:var(--accent);background:var(--accent-dim)}
-.user-tile .ut-name{font-size:14px;font-weight:500}
-.user-tile .ut-meta{font-size:11px;color:var(--text3);margin-top:2px}
-.admin-tile{border-color:var(--accent)!important;background:var(--accent-dim)!important}
+.user-btn{width:100%;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;text-align:left;font-family:'DM Sans',sans-serif}
+.user-btn:hover{border-color:var(--accent);background:var(--accent-dim);transform:translateY(-1px)}
+.user-btn-icon{width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text);flex-shrink:0}
+.user-btn-content{flex:1;min-width:0}
+.user-btn-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
+.user-btn-meta{font-size:11px;color:var(--text3)}
+.admin-btn{border-color:var(--accent);background:var(--accent-dim)}
+.admin-btn:hover{background:var(--accent);border-color:var(--accent2)}
+.admin-btn .user-btn-name{color:var(--accent)}
+.admin-btn:hover .user-btn-name{color:#0d1117}
+.admin-btn:hover .user-btn-meta{color:#0d1117;opacity:.7}
+.admin-icon{background:var(--accent);color:#0d1117}
+.admin-btn:hover .admin-icon{background:#0d1117;color:var(--accent)}
 
 /* divider */
 .divider{border:none;border-top:1px solid var(--border);margin:16px 0}
@@ -402,25 +411,30 @@ function LoginScreen({ users, firms, onLogin }) {
           </select>
         </div>
 
-        <label>Select your account</label>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <label style={{ margin: 0 }}>Select your account</label>
+          <span style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--bg3)', padding: '2px 8px', borderRadius: '12px' }}>
+            {visible.length + 1} {visible.length + 1 === 1 ? 'user' : 'users'}
+          </span>
+        </div>
         <div className="user-list">
-          <div className="user-tile admin-tile" onClick={() => onLogin({ id: "admin", name: "Admin", role: "admin" })}>
-            <div>
-              <div className="ut-name" style={{ color: "var(--accent)" }}>⚡ Admin Panel</div>
-              <div className="ut-meta">Manage firms & partners</div>
+          <button className="user-btn admin-btn" onClick={() => onLogin({ id: "admin", name: "Admin", role: "admin" })}>
+            <div className="user-btn-icon admin-icon">{Icon.admin}</div>
+            <div className="user-btn-content">
+              <div className="user-btn-name">Admin Panel</div>
+              <div className="user-btn-meta">Manage firms & partners</div>
             </div>
-            {Icon.admin}
-          </div>
+          </button>
           {visible.map(u => {
             const firm = firms.find(f => f.id === u.firmId);
             return (
-              <div key={u.id} className="user-tile" onClick={() => onLogin(u)}>
-                <div>
-                  <div className="ut-name">{u.name}</div>
-                  <div className="ut-meta">{firm?.name} · {u.mobile}</div>
+              <button key={u.id} className="user-btn" onClick={() => onLogin(u)}>
+                <div className="user-btn-icon">{u.name[0]}</div>
+                <div className="user-btn-content">
+                  <div className="user-btn-name">{u.name}</div>
+                  <div className="user-btn-meta">{firm?.name} · {u.mobile}</div>
                 </div>
-                {Icon.truck}
-              </div>
+              </button>
             );
           })}
         </div>
