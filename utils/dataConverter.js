@@ -1,0 +1,116 @@
+/**
+ * Utility functions to convert between app format (camelCase) 
+ * and database format (snake_case)
+ */
+
+// Convert database record to app format
+export const dbToApp = {
+  firm: (db) => ({
+    id: db.id,
+    name: db.name,
+    createdAt: db.created_at,
+  }),
+
+  user: (db) => ({
+    id: db.id,
+    name: db.name,
+    mobile: db.mobile,
+    firmId: db.firm_id,
+    role: db.role,
+    createdAt: db.created_at,
+  }),
+
+  vehicle: (db) => ({
+    id: db.id,
+    firmId: db.firm_id,
+    number: db.number,
+    type: db.type,
+    createdAt: db.created_at,
+  }),
+
+  expense: (db) => ({
+    id: db.id,
+    firmId: db.firm_id,
+    label: db.label,
+    amount: Number(db.amount),
+    perTrip: db.per_trip,
+    createdAt: db.created_at,
+  }),
+
+  trip: (db) => ({
+    id: db.id,
+    firmId: db.firm_id,
+    clientName: db.client_name,
+    partnerId: db.partner_id,
+    driverName: db.driver_name,
+    vehicleId: db.vehicle_id,
+    place: db.place,
+    item: db.item,
+    tripCount: db.trip_count,
+    ratePerTrip: Number(db.rate_per_trip),
+    date: db.date,
+    note: db.note,
+    expenses: db.expenses || {},
+    locked: db.locked,
+    createdAt: db.created_at,
+  }),
+};
+
+// Convert app record to database format
+export const appToDb = {
+  firm: (app) => ({
+    name: app.name,
+  }),
+
+  user: (app) => ({
+    name: app.name,
+    mobile: app.mobile,
+    firm_id: app.firmId,
+    role: app.role || 'partner',
+  }),
+
+  vehicle: (app) => ({
+    firm_id: app.firmId,
+    number: app.number,
+    type: app.type || 'Dumper',
+  }),
+
+  expense: (app) => ({
+    firm_id: app.firmId,
+    label: app.label,
+    amount: app.amount || 0,
+    per_trip: app.perTrip !== undefined ? app.perTrip : true,
+  }),
+
+  trip: (app) => ({
+    firm_id: app.firmId,
+    client_name: app.clientName,
+    partner_id: app.partnerId,
+    driver_name: app.driverName,
+    vehicle_id: app.vehicleId,
+    place: app.place,
+    item: app.item,
+    trip_count: app.tripCount,
+    rate_per_trip: app.ratePerTrip,
+    date: app.date,
+    note: app.note || '',
+    expenses: app.expenses || {},
+    locked: app.locked !== undefined ? app.locked : true,
+  }),
+};
+
+// Batch convert arrays
+export const convertArray = {
+  dbToApp: (type, dbArray) => dbArray.map(item => dbToApp[type](item)),
+  appToDb: (type, appArray) => appArray.map(item => appToDb[type](item)),
+};
+
+// Example usage:
+// const appTrips = convertArray.dbToApp('trip', dbTrips);
+// const dbTrip = appToDb.trip(appTrip);
+
+export default {
+  dbToApp,
+  appToDb,
+  convertArray,
+};
