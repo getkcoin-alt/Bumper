@@ -1127,7 +1127,40 @@ function UserPanel({ store, user }) {
                   <div className="stat-sub">{summary.netBalance >= 0 ? "✓ Positive" : "⚠ Negative"}</div>
                 </div>
               </div>
+
+              <div className="card" style={{ marginBottom: 20 }}>
+                <div style={{ marginBottom: 16 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Partner-wise Summary</h3>
+                  <p style={{ fontSize: 11, color: "var(--text3)" }}>Credits and debits by each partner</p>
+                </div>
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Partner</th><th>Credits</th><th>Debits</th><th>Net Balance</th></tr></thead>
+                    <tbody>
+                      {partners.map(p => {
+                        const ptx = transactions.filter(tx => tx.partnerId === p.id);
+                        const credits = ptx.filter(tx => tx.type === 'credit').reduce((s, tx) => s + tx.amount, 0);
+                        const debits = ptx.filter(tx => tx.type === 'debit').reduce((s, tx) => s + tx.amount, 0);
+                        const balance = credits - debits;
+                        return (
+                          <tr key={p.id}>
+                            <td className="td-bold">{p.name} {p.id === user.id && <span style={{ fontSize: 10, color: "var(--accent)" }}>(You)</span>}</td>
+                            <td className="td-teal">{fmt(credits)}</td>
+                            <td className="td-red">{fmt(debits)}</td>
+                            <td className={balance >= 0 ? "td-teal" : "td-red"} style={{ fontWeight: 600 }}>{fmt(balance)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               <div className="card">
+                <div style={{ marginBottom: 14 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>All Transactions</h3>
+                  <p style={{ fontSize: 11, color: "var(--text3)" }}>Complete transaction history</p>
+                </div>
                 <div className="table-wrap">
                   <table>
                     <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Category</th><th>Description</th><th>Payment</th><th>Reference</th><th>Partner</th></tr></thead>
