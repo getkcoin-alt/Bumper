@@ -51,6 +51,7 @@ export const dbToApp = {
     date: db.date,
     note: db.note,
     expenses: db.expenses || {},
+    editedProfit: db.edited_profit !== null && db.edited_profit !== undefined ? Number(db.edited_profit) : undefined,
     locked: db.locked,
     createdAt: db.created_at,
   }),

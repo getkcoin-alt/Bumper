@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "../utils/supabase";
+import { dbToApp, appToDb } from "../utils/dataConverter";
 
 // ── Seed Data ─────────────────────────────────────────────────────────────────
 const SEED = {
@@ -227,13 +228,90 @@ const Icon = {
 
 // ── App State ─────────────────────────────────────────────────────────────────
 function useStore() {
-  const [firms, setFirms] = useState(SEED.firms);
-  const [users, setUsers] = useState(SEED.users);
-  const [vehicles, setVehicles] = useState(SEED.vehicles);
-  const [expenses, setExpenses] = useState(SEED.expenses);
-  const [trips, setTrips] = useState(SEED.trips);
-  const [transactions, setTransactions] = useState(SEED.transactions);
+  const [firms, setFirms] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [trips, setTrips] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load all data on mount
+  useEffect(() => {
+    loadAllData();
+  }, []);
+
+  async function loadAllData() {
+    try {
+      setLoading(true);
+      
+      // Load firms
+      const { data: firmsData, error: firmsError } = await supabase
+        .from('firms')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (firmsError) throw firmsError;
+      setFirms((firmsData || []).map(dbToApp.firm));
+
+      // Load users
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (usersError) throw usersError;
+      setUsers((usersData || []).map(dbToApp.user));
+
+      // Load vehicles
+      const { data: vehiclesData, error: vehiclesError } = await supabase
+        .from('vehicles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (vehiclesError) throw vehiclesError;
+      setVehicles((vehiclesData || []).map(dbToApp.vehicle));
+
+      // Load expenses
+      const { data: expensesData, error: expensesError } = await supabase
+        .from('expenses')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (expensesError) throw expensesError;
+      setExpenses((expensesData || []).map(dbToApp.expense));
+
+      // Load trips
+      const { data: tripsData, error: tripsError } = await supabase
+        .from('trips')
+        .select('*')
+        .order('date', { ascending: false });
+      if (tripsError) throw tripsError;
+      setTrips((tripsData || []).map(dbToApp.trip));
+
+      // Load transactions
+      const { data: transactionsData, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('date', { ascending: false });
+      if (transactionsError) throw transactionsError;
+      setTransactions((transactionsData || []).map(tx => ({
+        id: tx.id,
+        firmId: tx.firm_id,
+        partnerId: tx.partner_id,
+        type: tx.type,
+        amount: Number(tx.amount),
+        category: tx.category,
+        description: tx.description,
+        date: tx.date,
+        referenceNumber: tx.reference_number,
+        paymentMethod: tx.payment_method,
+      })));
+
+    } catch (error) {
+      console.error('Error loading data:', error);
+      alert('Failed to load data from database. Check console for details.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const firmUsers = (firmId) => users.filter(u => u.firmId === firmId);
   const firmVehicles = (firmId) => vehicles.filter(v => v.firmId === firmId);
@@ -241,34 +319,144 @@ function useStore() {
   const firmTrips = (firmId) => trips.filter(t => t.firmId === firmId);
   const firmTransactions = (firmId) => transactions.filter(tx => tx.firmId === firmId);
 
-  const addFirm = (name) => {
-    const f = { id: uid(), name, createdAt: today() };
-    setFirms(p => [...p, f]);
-    return f;
+  const addFirm = async (name) => {
+    try {
+      const { data, error } = await supabase
+        .from('firms')
+        .insert([{ name }])
+        .select()
+        .single();
+      if (error) throw error;
+      const newFirm = dbToApp.firm(data);
+      setFirms(p => [newFirm, ...p]);
+      return newFirm;
+    } catch (error) {
+      console.error('Error adding firm:', error);
+      alert('Failed to add firm');
+      throw error;
+    }
   };
-  const addUser = (data) => {
-    const u = { id: uid(), ...data, role: "partner" };
-    setUsers(p => [...p, u]);
-    return u;
+
+  const addUser = async (data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('users')
+        .insert([appToDb.user(data)])
+        .select()
+        .single();
+      if (error) throw error;
+      const newUser = dbToApp.user(dbData);
+      setUsers(p => [newUser, ...p]);
+      return newUser;
+    } catch (error) {
+      console.error('Error adding user:', error);
+      alert('Failed to add user');
+      throw error;
+    }
   };
-  const addVehicle = (data) => {
-    const v = { id: uid(), ...data };
-    setVehicles(p => [...p, v]);
+
+  const addVehicle = async (data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('vehicles')
+        .insert([appToDb.vehicle(data)])
+        .select()
+        .single();
+      if (error) throw error;
+      const newVehicle = dbToApp.vehicle(dbData);
+      setVehicles(p => [newVehicle, ...p]);
+    } catch (error) {
+      console.error('Error adding vehicle:', error);
+      alert('Failed to add vehicle');
+      throw error;
+    }
   };
-  const addExpense = (data) => {
-    const e = { id: uid(), ...data };
-    setExpenses(p => [...p, e]);
+
+  const addExpense = async (data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('expenses')
+        .insert([appToDb.expense(data)])
+        .select()
+        .single();
+      if (error) throw error;
+      const newExpense = dbToApp.expense(dbData);
+      setExpenses(p => [newExpense, ...p]);
+    } catch (error) {
+      console.error('Error adding expense:', error);
+      alert('Failed to add expense');
+      throw error;
+    }
   };
-  const addTrip = (data) => {
-    const t = { id: uid(), ...data, locked: true };
-    setTrips(p => [...p, t]);
+
+  const addTrip = async (data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('trips')
+        .insert([appToDb.trip(data)])
+        .select()
+        .single();
+      if (error) throw error;
+      const newTrip = dbToApp.trip(dbData);
+      setTrips(p => [newTrip, ...p]);
+    } catch (error) {
+      console.error('Error adding trip:', error);
+      alert('Failed to add trip');
+      throw error;
+    }
   };
-  const updateTripProfit = (tripId, newProfit) => {
-    setTrips(p => p.map(t => t.id === tripId ? { ...t, editedProfit: newProfit } : t));
+
+  const updateTripProfit = async (tripId, newProfit) => {
+    try {
+      const { error } = await supabase
+        .from('trips')
+        .update({ edited_profit: newProfit })
+        .eq('id', tripId);
+      if (error) throw error;
+      setTrips(p => p.map(t => t.id === tripId ? { ...t, editedProfit: newProfit } : t));
+    } catch (error) {
+      console.error('Error updating trip profit:', error);
+      alert('Failed to update profit');
+      throw error;
+    }
   };
-  const addTransaction = (data) => {
-    const tx = { id: uid(), ...data };
-    setTransactions(p => [...p, tx]);
+
+  const addTransaction = async (data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('transactions')
+        .insert([{
+          firm_id: data.firmId,
+          partner_id: data.partnerId,
+          type: data.type,
+          amount: data.amount,
+          category: data.category,
+          description: data.description || '',
+          date: data.date,
+          reference_number: data.referenceNumber || '',
+          payment_method: data.paymentMethod || '',
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+      const newTx = {
+        id: dbData.id,
+        firmId: dbData.firm_id,
+        partnerId: dbData.partner_id,
+        type: dbData.type,
+        amount: Number(dbData.amount),
+        category: dbData.category,
+        description: dbData.description,
+        date: dbData.date,
+        referenceNumber: dbData.reference_number,
+        paymentMethod: dbData.payment_method,
+      };
+      setTransactions(p => [newTx, ...p]);
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      alert('Failed to add transaction');
+      throw error;
+    }
   };
 
   // Calculate totals for a trip
@@ -324,7 +512,7 @@ function useStore() {
   };
 
   return {
-    firms, users, vehicles, expenses, trips, transactions, currentUser, setCurrentUser,
+    firms, users, vehicles, expenses, trips, transactions, currentUser, setCurrentUser, loading,
 
     firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions,
     addFirm, addUser, addVehicle, addExpense, addTrip, updateTripProfit, addTransaction,
@@ -1434,6 +1622,21 @@ function UserPanel({ store, user }) {
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const store = useStore();
+
+  if (store.loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <style>{style}</style>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, background: 'var(--accent)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            {Icon.truck}
+          </div>
+          <h2 style={{ fontSize: 18, color: 'var(--text)', marginBottom: 8 }}>Loading DumperTrack...</h2>
+          <p style={{ fontSize: 13, color: 'var(--text3)' }}>Connecting to database</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!store.currentUser) {
     return <LoginScreen users={store.users} firms={store.firms} onLogin={store.setCurrentUser} />;
