@@ -1217,7 +1217,7 @@ function UserPanel({ store, user }) {
             <div><label>Vehicle Number *</label><input placeholder="e.g. RJ-14-GA-1234" value={form.number || ""} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></div>
             <div><label>Type</label>
               <select value={form.type || "Dumper"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
-                <option>Dumper</option><option>Truck</option><option>Tipper</option>
+                <option>Dumper</option><option>Truck</option><option>Loader</option><option>JCB</option><option>Dumper 10 wheels</option><option>Dumper 12 wheels</option><option>Dumper 16 wheels</option><option>Tractor</option>
               </select>
             </div>
           </div>
