@@ -75,39 +75,6 @@ const CREDIT_CATEGORIES = ["Client Payment", "Advance Payment", "Refund Received
 const DEBIT_CATEGORIES = ["Fuel Purchase", "Vehicle Repair", "Driver Salary", "Helper Salary", "Maintenance", "Insurance Payment", "Loan Repayment", "Office Expenses", "Other Expenses"];
 const PAYMENT_METHODS = ["Cash", "Bank Transfer", "Cheque", "UPI", "Card", "Other"];
 
-function useSupabaseTodos() {
-  const [todos, setTodos] = useState([]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const { data, error } = await supabase
-          .from('todos')
-          .select('*');
-
-        if (error) {
-          console.error('Supabase error loading todos:', error);
-          return;
-        }
-
-        if (!cancelled) setTodos(data ?? []);
-      } catch (e) {
-        console.error('Supabase exception loading todos:', e);
-      }
-    }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return todos;
-}
-
-
 function uid() { return Math.random().toString(36).slice(2, 10); }
 function today() { return new Date().toISOString().slice(0, 10); }
 
@@ -418,10 +385,8 @@ function useStore() {
     };
   };
 
-  const todos = useSupabaseTodos();
-
   return {
-    firms, users, vehicles, expenses, trips, transactions, todos, currentUser, setCurrentUser,
+    firms, users, vehicles, expenses, trips, transactions, currentUser, setCurrentUser,
 
     firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions,
     addFirm, addUser, addVehicle, addExpense, addTrip, updateTripProfit, addTransaction,
@@ -641,9 +606,6 @@ function UserPanel({ store, user }) {
   const [editingProfit, setEditingProfit] = useState(false);
   const [editedProfitValue, setEditedProfitValue] = useState("");
 
-  const todos = store.todos || [];
-
-
   const firm = store.firms.find(f => f.id === user.firmId);
   const partners = store.firmUsers(user.firmId);
   const vehicles = store.firmVehicles(user.firmId);
@@ -786,12 +748,6 @@ function UserPanel({ store, user }) {
             </div>
             <div className="content">
               <div className="grid g4" style={{ marginBottom: 20 }}>
-                <div className="stat-card" style={{ borderColor: "var(--border)", background: "var(--bg2)" }}>
-                  <div className="stat-label">Supabase Todos</div>
-                  <div className="stat-value">{todos.length}</div>
-                  <div className="stat-sub">Fetched from table</div>
-                </div>
-
                 <div className="stat-card accent">
                   <div className="stat-label">Total Income</div>
                   <div className="stat-value">{fmt(summary.income)}</div>
