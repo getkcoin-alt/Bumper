@@ -212,26 +212,21 @@ select option{background:var(--bg3)}
 
 /* login */
 .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}
-.login-card{width:100%;max-width:400px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;box-shadow:var(--shadow)}
-.login-logo{text-align:center;margin-bottom:24px}
-.login-logo .icon{width:48px;height:48px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
-.login-logo .icon svg{width:26px;height:26px}
-.login-logo h1{font-size:20px;letter-spacing:-.4px;font-weight:700}
-.login-logo p{font-size:12px;color:var(--text3);margin-top:4px}
-.user-list{display:flex;flex-direction:column;gap:8px;margin-top:16px}
-.user-btn{width:100%;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;text-align:left;font-family:'DM Sans',sans-serif}
-.user-btn:hover{border-color:var(--accent);background:var(--accent-dim);transform:translateY(-1px)}
-.user-btn-icon{width:40px;height:40px;background:var(--bg4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text);flex-shrink:0}
-.user-btn-content{flex:1;min-width:0}
-.user-btn-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
-.user-btn-meta{font-size:11px;color:var(--text3)}
-.admin-btn{border-color:var(--accent);background:var(--accent-dim)}
-.admin-btn:hover{background:var(--accent);border-color:var(--accent2)}
-.admin-btn .user-btn-name{color:var(--accent)}
-.admin-btn:hover .user-btn-name{color:#0d1117}
-.admin-btn:hover .user-btn-meta{color:#0d1117;opacity:.7}
-.admin-icon{background:var(--accent);color:#0d1117}
-.admin-btn:hover .admin-icon{background:#0d1117;color:var(--accent)}
+.login-card{width:100%;max-width:700px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;box-shadow:var(--shadow)}
+.login-logo{text-align:center;margin-bottom:32px}
+.login-logo .icon{width:56px;height:56px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.login-logo .icon svg{width:32px;height:32px;fill:#0d1117}
+.login-logo h1{font-size:24px;letter-spacing:-.6px;font-weight:700}
+.login-logo p{font-size:13px;color:var(--text3);margin-top:6px}
+.login-admin-btn{width:100%;padding:16px;background:linear-gradient(135deg, var(--accent-dim) 0%, var(--bg3) 100%);border:2px solid var(--accent);border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;margin-bottom:24px;font-family:'DM Sans',sans-serif}
+.login-admin-btn:hover{background:var(--accent);border-color:var(--accent2);transform:translateY(-2px);box-shadow:0 4px 16px var(--accent-dim)}
+.login-admin-btn .icon-wrap{width:40px;height:40px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0d1117}
+.login-admin-btn:hover .icon-wrap{background:#0d1117;color:var(--accent)}
+.login-admin-btn .text-wrap{text-align:left}
+.login-admin-btn .text-wrap .title{font-size:16px;font-weight:700;color:var(--accent);font-family:'Syne',sans-serif}
+.login-admin-btn:hover .text-wrap .title{color:#0d1117}
+.login-admin-btn .text-wrap .subtitle{font-size:12px;color:var(--text3);margin-top:2px}
+.login-admin-btn:hover .text-wrap .subtitle{color:#0d1117;opacity:0.7}
 
 /* divider */
 .divider{border:none;border-top:1px solid var(--border);margin:16px 0}
@@ -427,40 +422,63 @@ function LoginScreen({ users, firms, onLogin }) {
           <p>Dumper Trip & Finance Management</p>
         </div>
 
+        <button className="login-admin-btn" onClick={() => onLogin({ id: "admin", name: "Admin", role: "admin" })}>
+          <div className="icon-wrap">{Icon.admin}</div>
+          <div className="text-wrap">
+            <div className="title">Admin Panel</div>
+            <div className="subtitle">Manage firms & partners</div>
+          </div>
+        </button>
+
         <div style={{ marginBottom: 12 }}>
-          <label>Select firm</label>
+          <label>Filter by Firm</label>
           <select value={firmFilter} onChange={e => setFirmFilter(e.target.value)}>
             <option value="all">All firms</option>
             {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <label style={{ margin: 0 }}>Select your account</label>
-          <span style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--bg3)', padding: '2px 8px', borderRadius: '12px' }}>
-            {visible.length + 1} {visible.length + 1 === 1 ? 'user' : 'users'}
-          </span>
-        </div>
-        <div className="user-list">
-          <button className="user-btn admin-btn" onClick={() => onLogin({ id: "admin", name: "Admin", role: "admin" })}>
-            <div className="user-btn-icon admin-icon">{Icon.admin}</div>
-            <div className="user-btn-content">
-              <div className="user-btn-name">Admin Panel</div>
-              <div className="user-btn-meta">Manage firms & partners</div>
-            </div>
-          </button>
-          {visible.map(u => {
-            const firm = firms.find(f => f.id === u.firmId);
-            return (
-              <button key={u.id} className="user-btn" onClick={() => onLogin(u)}>
-                <div className="user-btn-icon">{u.name[0]}</div>
-                <div className="user-btn-content">
-                  <div className="user-btn-name">{u.name}</div>
-                  <div className="user-btn-meta">{firm?.name} · {u.mobile}</div>
-                </div>
-              </button>
-            );
-          })}
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Partner Name</th>
+                  <th>Firm</th>
+                  <th>Mobile</th>
+                  <th style={{ textAlign: 'center' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.length === 0 && (
+                  <tr>
+                    <td colSpan={5}>
+                      <div className="empty" style={{ padding: '24px' }}>
+                        <p>No partners found for selected firm</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {visible.map((u, i) => {
+                  const firm = firms.find(f => f.id === u.firmId);
+                  return (
+                    <tr key={u.id}>
+                      <td className="td-bold">{i + 1}</td>
+                      <td className="td-bold">{u.name}</td>
+                      <td><span className="badge badge-accent">{firm?.name}</span></td>
+                      <td>{u.mobile}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button className="btn btn-primary btn-sm" onClick={() => onLogin(u)}>
+                          Login
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -485,8 +503,8 @@ function AdminPanel({ store }) {
   };
 
   const submitUser = () => {
-    if (!form.name?.trim() || !form.mobile?.trim() || !form.firmId) return;
-    store.addUser({ name: form.name.trim(), mobile: form.mobile.trim(), firmId: form.firmId });
+    if (!form.name?.trim() || !form.firmId) return;
+    store.addUser({ name: form.name.trim(), mobile: form.mobile?.trim() || "", firmId: form.firmId });
     setModal(null); setForm({});
   };
 
@@ -582,9 +600,9 @@ function AdminPanel({ store }) {
         <Modal title="Add Partner" onClose={() => setModal(null)}
           footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitUser}>Add Partner</button></>}>
           <div className="form-grid">
-            <div><label>Full Name</label><input placeholder="Partner name" value={form.name || ""} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
-            <div><label>Mobile Number</label><input placeholder="10-digit mobile" value={form.mobile || ""} onChange={e => setForm(p => ({ ...p, mobile: e.target.value }))} /></div>
-            <div><label>Assign to Firm</label>
+            <div><label>Full Name *</label><input placeholder="Partner name" value={form.name || ""} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+            <div><label>Mobile Number</label><input placeholder="10-digit mobile (optional)" value={form.mobile || ""} onChange={e => setForm(p => ({ ...p, mobile: e.target.value }))} /></div>
+            <div><label>Assign to Firm *</label>
               <select value={form.firmId || ""} onChange={e => setForm(p => ({ ...p, firmId: e.target.value }))}>
                 <option value="">— Select Firm —</option>
                 {store.firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -770,15 +788,105 @@ function UserPanel({ store, user }) {
                 </div>
               </div>
 
+              <div className="grid g2" style={{ marginBottom: 20, gap: 16 }}>
+                <div className="card">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <div>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Quick Stats</h3>
+                      <p style={{ fontSize: 11, color: "var(--text3)" }}>Overview of operations</p>
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gap: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "var(--bg3)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 36, height: 36, background: "var(--accent-dim)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}>{Icon.vehicle}</div>
+                        <div>
+                          <div style={{ fontSize: 11, color: "var(--text3)" }}>Active Vehicles</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "Syne", color: "var(--text)" }}>{vehicles.length}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "var(--bg3)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 36, height: 36, background: "var(--teal-dim)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--teal)" }}>{Icon.people}</div>
+                        <div>
+                          <div style={{ fontSize: 11, color: "var(--text3)" }}>Partners</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "Syne", color: "var(--text)" }}>{partners.length}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "var(--bg3)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 36, height: 36, background: "var(--purple-dim)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--purple)" }}>{Icon.expense}</div>
+                        <div>
+                          <div style={{ fontSize: 11, color: "var(--text3)" }}>Expense Types</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "Syne", color: "var(--text)" }}>{expenses.length}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "var(--bg3)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 36, height: 36, background: "var(--blue-dim)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--blue)" }}>{Icon.wallet}</div>
+                        <div>
+                          <div style={{ fontSize: 11, color: "var(--text3)" }}>Transactions</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "Syne", color: "var(--text)" }}>{transactions.length}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <div>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Top Clients</h3>
+                      <p style={{ fontSize: 11, color: "var(--text3)" }}>By total income</p>
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {(() => {
+                      const byClient = {};
+                      trips.forEach(t => {
+                        const c = store.calcTrip(t);
+                        if (!byClient[t.clientName]) {
+                          byClient[t.clientName] = { income: 0, trips: 0 };
+                        }
+                        byClient[t.clientName].income += c.income;
+                        byClient[t.clientName].trips += t.tripCount;
+                      });
+                      return Object.entries(byClient)
+                        .sort((a, b) => b[1].income - a[1].income)
+                        .slice(0, 5)
+                        .map(([name, data]) => (
+                          <div key={name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", background: "var(--bg3)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                              <div style={{ fontSize: 10, color: "var(--text3)" }}>{data.trips} trips</div>
+                            </div>
+                            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "Syne", color: "var(--accent)", marginLeft: 12 }}>{fmt(data.income)}</div>
+                          </div>
+                        ));
+                    })()}
+                    {trips.length === 0 && (
+                      <div style={{ textAlign: "center", padding: "20px", color: "var(--text3)", fontSize: 12 }}>No client data yet</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="card">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                  <h3 style={{ fontSize: 14 }}>Recent Trip Entries</h3>
+                  <div>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Recent Trip Entries</h3>
+                    <p style={{ fontSize: 11, color: "var(--text3)" }}>Latest {Math.min(6, trips.length)} of {trips.length} total entries</p>
+                  </div>
                   <button className="btn btn-outline btn-sm" onClick={() => setTab("trips")}>View all</button>
                 </div>
                 <div className="table-wrap">
                   <table>
                     <thead><tr><th>Date</th><th>Client</th><th>Item</th><th>Trips</th><th>Income</th><th>Profit</th><th>By</th></tr></thead>
                     <tbody>
+                      {trips.length === 0 && <tr><td colSpan={7}><div className="empty" style={{ padding: "32px 20px" }}><p>No trips yet. Click "Add Trip" to get started.</p></div></td></tr>}
                       {[...trips].reverse().slice(0, 6).map(t => {
                         const c = store.calcTrip(t);
                         const by = partners.find(p => p.id === t.partnerId);
