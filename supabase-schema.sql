@@ -59,6 +59,22 @@ CREATE TABLE trips (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Transactions table (Credit/Debit)
+CREATE TABLE transactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  firm_id UUID REFERENCES firms(id) ON DELETE CASCADE NOT NULL,
+  partner_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  type TEXT NOT NULL CHECK (type IN ('credit', 'debit')),
+  amount NUMERIC NOT NULL CHECK (amount > 0),
+  category TEXT NOT NULL,
+  description TEXT,
+  date DATE NOT NULL,
+  reference_number TEXT,
+  payment_method TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_users_firm_id ON users(firm_id);
 CREATE INDEX idx_vehicles_firm_id ON vehicles(firm_id);
@@ -66,6 +82,10 @@ CREATE INDEX idx_expenses_firm_id ON expenses(firm_id);
 CREATE INDEX idx_trips_firm_id ON trips(firm_id);
 CREATE INDEX idx_trips_date ON trips(date);
 CREATE INDEX idx_trips_partner_id ON trips(partner_id);
+CREATE INDEX idx_transactions_firm_id ON transactions(firm_id);
+CREATE INDEX idx_transactions_partner_id ON transactions(partner_id);
+CREATE INDEX idx_transactions_date ON transactions(date);
+CREATE INDEX idx_transactions_type ON transactions(type);
 
 -- Insert seed data
 INSERT INTO firms (id, name, created_at) VALUES
@@ -101,6 +121,7 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trips ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
 -- Create policies (allow all for now - adjust based on your auth requirements)
 CREATE POLICY "Allow all on firms" ON firms FOR ALL USING (true);
@@ -108,3 +129,4 @@ CREATE POLICY "Allow all on users" ON users FOR ALL USING (true);
 CREATE POLICY "Allow all on vehicles" ON vehicles FOR ALL USING (true);
 CREATE POLICY "Allow all on expenses" ON expenses FOR ALL USING (true);
 CREATE POLICY "Allow all on trips" ON trips FOR ALL USING (true);
+CREATE POLICY "Allow all on transactions" ON transactions FOR ALL USING (true);

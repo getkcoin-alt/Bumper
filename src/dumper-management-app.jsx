@@ -45,9 +45,35 @@ const SEED = {
       date: "2025-05-12", note: "", locked: true,
     },
   ],
+  transactions: [
+    {
+      id: "tx1", firmId: "f1", partnerId: "u1", type: "credit",
+      amount: 5000, category: "Client Payment", description: "Payment from Anand Builders",
+      date: "2025-01-15", referenceNumber: "PAY-001", paymentMethod: "Bank Transfer"
+    },
+    {
+      id: "tx2", firmId: "f1", partnerId: "u1", type: "debit",
+      amount: 2000, category: "Fuel Purchase", description: "Bulk diesel purchase",
+      date: "2025-01-16", referenceNumber: "EXP-001", paymentMethod: "Cash"
+    },
+    {
+      id: "tx3", firmId: "f1", partnerId: "u2", type: "credit",
+      amount: 4200, category: "Client Payment", description: "Payment from Sharma Constructions",
+      date: "2025-01-20", referenceNumber: "PAY-003", paymentMethod: "Cheque"
+    },
+    {
+      id: "tx4", firmId: "f2", partnerId: "u3", type: "credit",
+      amount: 6000, category: "Client Payment", description: "Payment from City Infra",
+      date: "2025-01-14", referenceNumber: "PAY-101", paymentMethod: "Bank Transfer"
+    },
+  ],
 };
 
 const ITEMS = ["Stone", "Concrete", "Pubba", "Bricks", "Soil", "Gravel", "Sand (plain)", "Sand (unplain)"];
+
+const CREDIT_CATEGORIES = ["Client Payment", "Advance Payment", "Refund Received", "Loan Received", "Investment", "Other Income"];
+const DEBIT_CATEGORIES = ["Fuel Purchase", "Vehicle Repair", "Driver Salary", "Helper Salary", "Maintenance", "Insurance Payment", "Loan Repayment", "Office Expenses", "Other Expenses"];
+const PAYMENT_METHODS = ["Cash", "Bank Transfer", "Cheque", "UPI", "Card", "Other"];
 
 function useSupabaseTodos() {
   const [todos, setTodos] = useState([]);
@@ -289,6 +315,9 @@ const Icon = {
   logout: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
   lock: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
   admin: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  wallet: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>,
+  arrowUp: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>,
+  arrowDown: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>,
 };
 
 // ── App State ─────────────────────────────────────────────────────────────────
@@ -298,12 +327,14 @@ function useStore() {
   const [vehicles, setVehicles] = useState(SEED.vehicles);
   const [expenses, setExpenses] = useState(SEED.expenses);
   const [trips, setTrips] = useState(SEED.trips);
+  const [transactions, setTransactions] = useState(SEED.transactions);
   const [currentUser, setCurrentUser] = useState(null);
 
   const firmUsers = (firmId) => users.filter(u => u.firmId === firmId);
   const firmVehicles = (firmId) => vehicles.filter(v => v.firmId === firmId);
   const firmExpenses = (firmId) => expenses.filter(e => e.firmId === firmId);
   const firmTrips = (firmId) => trips.filter(t => t.firmId === firmId);
+  const firmTransactions = (firmId) => transactions.filter(tx => tx.firmId === firmId);
 
   const addFirm = (name) => {
     const f = { id: uid(), name, createdAt: today() };
@@ -330,6 +361,10 @@ function useStore() {
   const updateTripProfit = (tripId, newProfit) => {
     setTrips(p => p.map(t => t.id === tripId ? { ...t, editedProfit: newProfit } : t));
   };
+  const addTransaction = (data) => {
+    const tx = { id: uid(), ...data };
+    setTransactions(p => [...p, tx]);
+  };
 
   // Calculate totals for a trip
   const calcTrip = (trip) => {
@@ -354,7 +389,9 @@ function useStore() {
   // Firm summary
   const firmSummary = (firmId) => {
     const ftrips = firmTrips(firmId);
-    return ftrips.reduce((acc, t) => {
+    const ftransactions = firmTransactions(firmId);
+    
+    const tripSummary = ftrips.reduce((acc, t) => {
       const c = calcTrip(t);
       acc.income += c.income;
       acc.expense += c.totalExp;
@@ -362,15 +399,32 @@ function useStore() {
       acc.trips += t.tripCount;
       return acc;
     }, { income: 0, expense: 0, profit: 0, trips: 0 });
+    
+    const transactionSummary = ftransactions.reduce((acc, tx) => {
+      if (tx.type === 'credit') {
+        acc.credits += tx.amount;
+      } else {
+        acc.debits += tx.amount;
+      }
+      return acc;
+    }, { credits: 0, debits: 0 });
+    
+    return {
+      ...tripSummary,
+      credits: transactionSummary.credits,
+      debits: transactionSummary.debits,
+      netBalance: transactionSummary.credits - transactionSummary.debits,
+      totalIncome: tripSummary.income + transactionSummary.credits,
+    };
   };
 
   const todos = useSupabaseTodos();
 
   return {
-    firms, users, vehicles, expenses, trips, todos, currentUser, setCurrentUser,
+    firms, users, vehicles, expenses, trips, transactions, todos, currentUser, setCurrentUser,
 
-    firmUsers, firmVehicles, firmExpenses, firmTrips,
-    addFirm, addUser, addVehicle, addExpense, addTrip, updateTripProfit,
+    firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions,
+    addFirm, addUser, addVehicle, addExpense, addTrip, updateTripProfit, addTransaction,
     calcTrip, firmSummary,
   };
 }
@@ -595,11 +649,13 @@ function UserPanel({ store, user }) {
   const vehicles = store.firmVehicles(user.firmId);
   const expenses = store.firmExpenses(user.firmId);
   const trips = store.firmTrips(user.firmId);
+  const transactions = store.firmTransactions(user.firmId);
   const summary = store.firmSummary(user.firmId);
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: Icon.dashboard },
     { id: "trips", label: "Trips", icon: Icon.trips },
+    { id: "transactions", label: "Credit/Debit", icon: Icon.wallet },
     { id: "expenses", label: "Expenses", icon: Icon.expense },
     { id: "vehicles", label: "Vehicles", icon: Icon.vehicle },
     { id: "partners", label: "Partners", icon: Icon.people },
@@ -663,6 +719,25 @@ function UserPanel({ store, user }) {
     if (!form.label?.trim()) return;
     // Store only label; amounts are entered per trip.
     store.addExpense({ firmId: user.firmId, label: form.label.trim(), amount: 0, perTrip: true });
+    setModal(null);
+    setForm({});
+  };
+
+  const submitTransaction = () => {
+    if (!form.type || !form.amount || !form.category?.trim() || !form.date) {
+      return alert("Fill all required fields.");
+    }
+    store.addTransaction({
+      firmId: user.firmId,
+      partnerId: form.partnerId || user.id,
+      type: form.type,
+      amount: Number(form.amount),
+      category: form.category.trim(),
+      description: form.description?.trim() || "",
+      date: form.date,
+      referenceNumber: form.referenceNumber?.trim() || "",
+      paymentMethod: form.paymentMethod || "",
+    });
     setModal(null);
     setForm({});
   };
@@ -817,6 +892,76 @@ function UserPanel({ store, user }) {
                             </td>
                             <td><span className="badge badge-gray">{by?.name?.split(" ")[0]}</span></td>
                             <td><button className="btn btn-outline btn-sm" onClick={() => setTripDetail(t)}>Detail</button></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {tab === "transactions" && (
+          <>
+            <div className="topbar">
+              <div>
+                <h1 className="page-title">Credit & Debit</h1>
+                <p className="page-sub">{transactions.length} transactions · Affects total income</p>
+              </div>
+              <button className="btn btn-primary" onClick={() => { setModal("transaction"); setForm({ partnerId: user.id, date: today(), type: "credit" }); }}>
+                {Icon.plus} Add Transaction
+              </button>
+            </div>
+            <div className="content">
+              <div className="grid g3" style={{ marginBottom: 20 }}>
+                <div className="stat-card teal">
+                  <div className="stat-label">Total Credits</div>
+                  <div className="stat-value">{fmt(summary.credits || 0)}</div>
+                  <div className="stat-sub">{transactions.filter(tx => tx.type === 'credit').length} credit entries</div>
+                </div>
+                <div className="stat-card red">
+                  <div className="stat-label">Total Debits</div>
+                  <div className="stat-value">{fmt(summary.debits || 0)}</div>
+                  <div className="stat-sub">{transactions.filter(tx => tx.type === 'debit').length} debit entries</div>
+                </div>
+                <div className="stat-card accent">
+                  <div className="stat-label">Net Balance</div>
+                  <div className="stat-value">{fmt(summary.netBalance || 0)}</div>
+                  <div className="stat-sub">{summary.netBalance >= 0 ? "✓ Positive" : "⚠ Negative"}</div>
+                </div>
+              </div>
+              <div className="card">
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Category</th><th>Description</th><th>Payment</th><th>Reference</th><th>Partner</th></tr></thead>
+                    <tbody>
+                      {transactions.length === 0 && <tr><td colSpan={8}><div className="empty"><p>No transactions yet. Add your first credit or debit entry.</p></div></td></tr>}
+                      {[...transactions].reverse().map(tx => {
+                        const by = partners.find(p => p.id === tx.partnerId);
+                        return (
+                          <tr key={tx.id}>
+                            <td>{tx.date}</td>
+                            <td>
+                              {tx.type === 'credit' ? (
+                                <span className="badge badge-teal" style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
+                                  {Icon.arrowUp} Credit
+                                </span>
+                              ) : (
+                                <span className="badge badge-red" style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
+                                  {Icon.arrowDown} Debit
+                                </span>
+                              )}
+                            </td>
+                            <td className={tx.type === 'credit' ? 'td-teal' : 'td-red'} style={{ fontWeight: 600 }}>
+                              {tx.type === 'credit' ? '+' : '-'}{fmt(tx.amount)}
+                            </td>
+                            <td className="td-bold">{tx.category}</td>
+                            <td style={{ fontSize: 12, color: 'var(--text3)' }}>{tx.description || '—'}</td>
+                            <td><span className="badge badge-gray">{tx.paymentMethod || '—'}</span></td>
+                            <td style={{ fontSize: 11 }}>{tx.referenceNumber || '—'}</td>
+                            <td><span className="badge badge-gray">{by?.name?.split(" ")[0]}</span></td>
                           </tr>
                         );
                       })}
@@ -1130,6 +1275,62 @@ function UserPanel({ store, user }) {
             <div><label>Expense Label *</label><input placeholder="e.g. Diesel, Driver Wages" value={form.label || ""} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} /></div>
             <div style={{ fontSize: 11, color: "var(--text3)" }}>
               Expense types are labels only. Amounts are entered per trip.
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {modal === "transaction" && (
+        <Modal title="Add Credit/Debit Transaction" onClose={() => setModal(null)}
+          footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitTransaction}>Save Transaction</button></>}>
+          <div className="form-grid">
+            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+              <div>
+                <label>Transaction Type *</label>
+                <select value={form.type || "credit"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
+                  <option value="credit">Credit (Money In)</option>
+                  <option value="debit">Debit (Money Out)</option>
+                </select>
+              </div>
+              <div><label>Amount (₹) *</label><input type="number" min="0" step="0.01" placeholder="e.g. 5000" value={form.amount || ""} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></div>
+            </div>
+            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+              <div>
+                <label>Category *</label>
+                <select value={form.category || ""} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
+                  <option value="">— Select Category —</option>
+                  {(form.type === 'credit' ? CREDIT_CATEGORIES : DEBIT_CATEGORIES).map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              <div><label>Date *</label><input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} /></div>
+            </div>
+            <div><label>Description</label><input placeholder="Brief description of transaction" value={form.description || ""} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></div>
+            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+              <div>
+                <label>Payment Method</label>
+                <select value={form.paymentMethod || ""} onChange={e => setForm(p => ({ ...p, paymentMethod: e.target.value }))}>
+                  <option value="">— Select —</option>
+                  {PAYMENT_METHODS.map(method => (
+                    <option key={method} value={method}>{method}</option>
+                  ))}
+                </select>
+              </div>
+              <div><label>Reference Number</label><input placeholder="e.g. PAY-001, CHQ-123" value={form.referenceNumber || ""} onChange={e => setForm(p => ({ ...p, referenceNumber: e.target.value }))} /></div>
+            </div>
+            <div>
+              <label>Partner (Entry by)</label>
+              <select value={form.partnerId || user.id} onChange={e => setForm(p => ({ ...p, partnerId: e.target.value }))}>
+                {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 12, color: "var(--text3)" }}>
+              {form.type === 'credit' ? (
+                <>✓ This will increase your total income by {fmt(form.amount || 0)}</>
+              ) : (
+                <>⚠ This will decrease your total income by {fmt(form.amount || 0)}</>
+              )}
             </div>
           </div>
         </Modal>
