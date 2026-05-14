@@ -55,6 +55,7 @@ CREATE TABLE trips (
   date DATE NOT NULL,
   note TEXT,
   expenses JSONB DEFAULT '{}',
+  edited_profit NUMERIC,
   locked BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
