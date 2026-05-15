@@ -424,6 +424,24 @@ function useStore() {
     }
   };
 
+  const updateVehicle = async (id, data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('vehicles')
+        .update(appToDb.vehicle(data))
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      const updated = dbToApp.vehicle(dbData);
+      setVehicles(p => p.map(v => v.id === id ? updated : v));
+    } catch (error) {
+      console.error('Error updating vehicle:', error);
+      alert('Failed to update vehicle');
+      throw error;
+    }
+  };
+
   const addExpense = async (data) => {
     try {
       const { data: dbData, error } = await supabase
@@ -584,7 +602,7 @@ function useStore() {
     firms, users, vehicles, expenses, trips, transactions, currentUser, setCurrentUser, loading,
 
     firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions,
-    addFirm, addUser, addVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction,
+    addFirm, addUser, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction,
     calcTrip, firmSummary,
   };
 }
@@ -956,6 +974,20 @@ function UserPanel({ store, user }) {
       type: r.type || "Dumper",
       emiAmount: 0, emiStartDate: null, emiTenureMonths: 0, emiDescription: "",
     })));
+    setModal(null); setForm({});
+  };
+
+  const submitEditVehicle = async () => {
+    if (!form.id || !form.number?.trim()) return;
+    await store.updateVehicle(form.id, {
+      firmId: user.firmId,
+      number: form.number.trim(),
+      type: form.type || "Dumper",
+      emiAmount: Number(form.emiAmount) || 0,
+      emiStartDate: form.emiStartDate || null,
+      emiTenureMonths: Number(form.emiTenureMonths) || 0,
+      emiDescription: form.emiDescription?.trim() || "",
+    });
     setModal(null); setForm({});
   };
 
@@ -1512,7 +1544,10 @@ function UserPanel({ store, user }) {
                                 <div style={{ fontSize: 11, color: "var(--text3)" }}>{v.type}</div>
                               </div>
                             </div>
-                            {emi && <span className={`emi-tag ${emi.done ? "emi-done" : "emi-active"}`}>{emi.done ? "EMI Done" : "EMI Active"}</span>}
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              {emi && <span className={`emi-tag ${emi.done ? "emi-done" : "emi-active"}`}>{emi.done ? "EMI Done" : "EMI Active"}</span>}
+                              <button className="btn btn-outline btn-sm" onClick={() => { setModal("editVehicle"); setForm({ id: v.id, number: v.number, type: v.type, emiAmount: v.emiAmount || "", emiStartDate: v.emiStartDate || "", emiTenureMonths: v.emiTenureMonths || "", emiDescription: v.emiDescription || "" }); }}>✎ Edit</button>
+                            </div>
                           </div>
                           <div style={{ display: "grid", gap: 6, fontSize: 12 }}>
                             <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -1533,6 +1568,9 @@ function UserPanel({ store, user }) {
                             )}
                             {emi && emi.done && (
                               <div style={{ color: "var(--teal)", fontSize: 11 }}>Loan fully paid</div>
+                            )}
+                            {!emi && (
+                              <div style={{ color: "var(--text3)", fontSize: 11 }}>No EMI set · <button onClick={() => { setModal("editVehicle"); setForm({ id: v.id, number: v.number, type: v.type, emiAmount: "", emiStartDate: "", emiTenureMonths: "", emiDescription: "" }); }} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 11, padding: 0 }}>Set EMI</button></div>
                             )}
                             {v.emiDescription && (
                               <div style={{ color: "var(--text3)", fontSize: 11, marginTop: 2, borderTop: "1px solid var(--border)", paddingTop: 6 }}>{v.emiDescription}</div>
@@ -1785,6 +1823,51 @@ function UserPanel({ store, user }) {
               onClick={() => setForm(p => ({ ...p, vehicleRows: [...(p.vehicleRows || []), { number: "", type: "Dumper" }] }))}>
               + Add Another Vehicle
             </button>
+          </div>
+        </Modal>
+      )}
+
+      {modal === "editVehicle" && (
+        <Modal title="Edit Vehicle" onClose={() => { setModal(null); setForm({}); }}
+          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitEditVehicle}>Save Changes</button></>}>
+          <div className="form-grid">
+            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+              <div><label>Vehicle Number *</label><input placeholder="e.g. RJ-14-GA-1234" value={form.number || ""} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></div>
+              <div><label>Type</label>
+                <select value={form.type || "Dumper"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
+                  <option>Dumper</option><option>Truck</option><option>Loader</option><option>JCB</option><option>Dumper 10 wheels</option><option>Dumper 12 wheels</option><option>Dumper 16 wheels</option><option>Tractor</option>
+                </select>
+              </div>
+            </div>
+            <hr className="divider" />
+            <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: -4 }}>EMI Details <span style={{ opacity: .6 }}>(leave blank to remove EMI)</span></div>
+            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+              <div><label>Monthly EMI (₹)</label><input type="number" min="0" placeholder="e.g. 25000" value={form.emiAmount || ""} onChange={e => setForm(p => ({ ...p, emiAmount: e.target.value }))} /></div>
+              <div><label>Tenure (Months)</label><input type="number" min="1" placeholder="e.g. 36" value={form.emiTenureMonths || ""} onChange={e => setForm(p => ({ ...p, emiTenureMonths: e.target.value }))} /></div>
+            </div>
+            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+              <div><label>EMI Start Date</label><input type="date" value={form.emiStartDate || ""} onChange={e => setForm(p => ({ ...p, emiStartDate: e.target.value }))} /></div>
+              <div><label>Loan / Bank Note</label><input placeholder="e.g. SBI Loan #123456" value={form.emiDescription || ""} onChange={e => setForm(p => ({ ...p, emiDescription: e.target.value }))} /></div>
+            </div>
+            {Number(form.emiAmount) > 0 && Number(form.emiTenureMonths) > 0 && (
+              <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 12 }}>
+                <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".7px", marginBottom: 8 }}>EMI Preview</div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ color: "var(--text2)" }}>Total Loan Cost</span>
+                  <span style={{ color: "var(--blue)", fontWeight: 600, fontFamily: "Syne" }}>{fmt(Number(form.emiAmount) * Number(form.emiTenureMonths))}</span>
+                </div>
+                {form.emiStartDate && (() => {
+                  const elapsed = Math.floor((new Date() - new Date(form.emiStartDate)) / (30 * 24 * 60 * 60 * 1000));
+                  const remaining = Math.max(0, Number(form.emiTenureMonths) - elapsed);
+                  return (
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--text2)" }}>Remaining</span>
+                      <span style={{ color: remaining === 0 ? "var(--teal)" : "var(--text)", fontWeight: 600, fontFamily: "Syne" }}>{remaining === 0 ? "Paid off" : `${remaining} mo · ${fmt(remaining * Number(form.emiAmount))}`}</span>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         </Modal>
       )}
