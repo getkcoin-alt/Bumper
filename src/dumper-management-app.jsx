@@ -918,6 +918,12 @@ function UserPanel({ store, user }) {
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
+    // Lock if the finger starts inside any horizontally-scrollable element
+    let el = e.target;
+    while (el && el !== e.currentTarget) {
+      if (el.scrollWidth > el.clientWidth + 2) { swipeLocked.current = true; return; }
+      el = el.parentElement;
+    }
     swipeLocked.current = false;
   };
 
