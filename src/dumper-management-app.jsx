@@ -893,6 +893,7 @@ function UserPanel({ store, user }) {
   const [vehFilter, setVehFilter] = useState({ type: "all", emi: "all" });
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  const swipeLocked = useRef(false);
 
   const firm = store.firms.find(f => f.id === user.firmId);
   const partners = store.firmUsers(user.firmId);
@@ -917,12 +918,21 @@ function UserPanel({ store, user }) {
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
+    swipeLocked.current = false;
+  };
+
+  const handleTouchMove = (e) => {
+    if (swipeLocked.current) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartX.current);
+    const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
+    if (dy > 8 && dy >= dx) swipeLocked.current = true;
   };
 
   const handleTouchEnd = (e) => {
+    if (swipeLocked.current) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     const dy = e.changedTouches[0].clientY - touchStartY.current;
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
     const idx = tabIds.indexOf(tab);
     if (dx < 0 && idx < tabIds.length - 1) setTab(tabIds[idx + 1]);
     if (dx > 0 && idx > 0) setTab(tabIds[idx - 1]);
@@ -1056,7 +1066,7 @@ function UserPanel({ store, user }) {
         </div>
       </div>
 
-      <div className="main" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div className="main" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
         {/* ── DASHBOARD ── */}
         {tab === "dashboard" && (
           <>
