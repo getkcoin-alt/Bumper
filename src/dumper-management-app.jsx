@@ -863,6 +863,8 @@ function UserPanel({ store, user }) {
   const [tripFilter, setTripFilter] = useState({ client: "", partner: "", vehicle: "", dateFrom: "", dateTo: "" });
   const [txFilter, setTxFilter] = useState({ type: "all", partner: "", dateFrom: "", dateTo: "" });
   const [vehFilter, setVehFilter] = useState({ type: "all", emi: "all" });
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
 
   const firm = store.firms.find(f => f.id === user.firmId);
   const partners = store.firmUsers(user.firmId);
@@ -881,6 +883,22 @@ function UserPanel({ store, user }) {
     { id: "partners", label: "Partners", icon: Icon.people },
     { id: "balance", label: "Balance", icon: Icon.balance },
   ];
+
+  const tabIds = navItems.map(n => n.id);
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return;
+    const idx = tabIds.indexOf(tab);
+    if (dx < 0 && idx < tabIds.length - 1) setTab(tabIds[idx + 1]);
+    if (dx > 0 && idx > 0) setTab(tabIds[idx - 1]);
+  };
 
   // Trip form auto-calculation
   const tripIncome = (form.ratePerTrip || 0) * (form.tripCount || 0);
@@ -999,7 +1017,7 @@ function UserPanel({ store, user }) {
         </div>
       </div>
 
-      <div className="main">
+      <div className="main" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         {/* ── DASHBOARD ── */}
         {tab === "dashboard" && (
           <>
