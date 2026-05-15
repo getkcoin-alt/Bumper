@@ -947,26 +947,23 @@ function UserPanel({ store, user }) {
     setForm({});
   };
 
-  const submitVehicle = () => {
-    if (!form.number?.trim()) return;
-    store.addVehicle({
+  const submitVehicle = async () => {
+    const rows = (form.vehicleRows || []).filter(r => r.number?.trim());
+    if (!rows.length) return;
+    await Promise.all(rows.map(r => store.addVehicle({
       firmId: user.firmId,
-      number: form.number.trim(),
-      type: form.type || "Dumper",
-      emiAmount: Number(form.emiAmount) || 0,
-      emiStartDate: form.emiStartDate || null,
-      emiTenureMonths: Number(form.emiTenureMonths) || 0,
-      emiDescription: form.emiDescription?.trim() || "",
-    });
+      number: r.number.trim(),
+      type: r.type || "Dumper",
+      emiAmount: 0, emiStartDate: null, emiTenureMonths: 0, emiDescription: "",
+    })));
     setModal(null); setForm({});
   };
 
-  const submitExpense = () => {
-    if (!form.label?.trim()) return;
-    // Store only label; amounts are entered per trip.
-    store.addExpense({ firmId: user.firmId, label: form.label.trim(), amount: 0, perTrip: true });
-    setModal(null);
-    setForm({});
+  const submitExpense = async () => {
+    const rows = (form.expenseRows || []).filter(r => r.label?.trim());
+    if (!rows.length) return;
+    await Promise.all(rows.map(r => store.addExpense({ firmId: user.firmId, label: r.label.trim(), amount: 0, perTrip: true })));
+    setModal(null); setForm({});
   };
 
   const submitTransaction = () => {
@@ -1413,7 +1410,7 @@ function UserPanel({ store, user }) {
                 <h1 className="page-title">Expense Types</h1>
                 <p className="page-sub">Auto-applied to every trip for calculation</p>
               </div>
-              <button className="btn btn-primary" onClick={() => { setModal("expense"); setForm({ perTrip: "true" }); }}>
+              <button className="btn btn-primary" onClick={() => { setModal("expense"); setForm({ expenseRows: [{ label: "" }] }); }}>
                 {Icon.plus} Add Expense
               </button>
             </div>
@@ -1445,7 +1442,7 @@ function UserPanel({ store, user }) {
                 <h1 className="page-title">Vehicles</h1>
                 <p className="page-sub">{vehicles.length} registered vehicles</p>
               </div>
-              <button className="btn btn-primary" onClick={() => { setModal("vehicle"); setForm({ type: "Dumper" }); }}>
+              <button className="btn btn-primary" onClick={() => { setModal("vehicle"); setForm({ vehicleRows: [{ number: "", type: "Dumper" }] }); }}>
                 {Icon.plus} Add Vehicle
               </button>
             </div>
@@ -1768,48 +1765,46 @@ function UserPanel({ store, user }) {
       )}
 
       {modal === "vehicle" && (
-        <Modal title="Add Vehicle" onClose={() => setModal(null)}
-          footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitVehicle}>Add Vehicle</button></>}>
+        <Modal title="Add Vehicles" onClose={() => setModal(null)}
+          footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitVehicle}>Add {(form.vehicleRows||[]).filter(r=>r.number?.trim()).length || ""} Vehicle{(form.vehicleRows||[]).filter(r=>r.number?.trim()).length !== 1 ? "s" : ""}</button></>}>
           <div className="form-grid">
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
-              <div><label>Vehicle Number *</label><input placeholder="e.g. RJ-14-GA-1234" value={form.number || ""} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></div>
-              <div><label>Type</label>
-                <select value={form.type || "Dumper"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
-                  <option>Dumper</option><option>Truck</option><option>Loader</option><option>JCB</option><option>Dumper 10 wheels</option><option>Dumper 12 wheels</option><option>Dumper 16 wheels</option><option>Tractor</option>
-                </select>
-              </div>
-            </div>
-            <hr className="divider" />
-            <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: -4 }}>EMI Details <span style={{ opacity: .6 }}>(optional — leave blank if no loan)</span></div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
-              <div><label>Monthly EMI (₹)</label><input type="number" min="0" placeholder="e.g. 25000" value={form.emiAmount || ""} onChange={e => setForm(p => ({ ...p, emiAmount: e.target.value }))} /></div>
-              <div><label>Tenure (Months)</label><input type="number" min="1" placeholder="e.g. 36" value={form.emiTenureMonths || ""} onChange={e => setForm(p => ({ ...p, emiTenureMonths: e.target.value }))} /></div>
-            </div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
-              <div><label>EMI Start Date</label><input type="date" value={form.emiStartDate || ""} onChange={e => setForm(p => ({ ...p, emiStartDate: e.target.value }))} /></div>
-              <div><label>Loan / Bank Note</label><input placeholder="e.g. SBI Loan #123456" value={form.emiDescription || ""} onChange={e => setForm(p => ({ ...p, emiDescription: e.target.value }))} /></div>
-            </div>
-            {form.emiAmount > 0 && form.emiTenureMonths > 0 && (
-              <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 12 }}>
-                <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".7px", marginBottom: 8 }}>EMI Preview</div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--text2)" }}>Total Loan Cost</span>
-                  <span style={{ color: "var(--blue)", fontWeight: 600, fontFamily: "Syne" }}>{fmt(Number(form.emiAmount) * Number(form.emiTenureMonths))}</span>
+            <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 2 }}>Enter one vehicle per row. Click + to add more.</div>
+            {(form.vehicleRows || [{ number: "", type: "Dumper" }]).map((row, i) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "end" }}>
+                <div><label>Vehicle Number *</label><input placeholder="e.g. RJ-14-GA-1234" value={row.number || ""} onChange={e => setForm(p => { const r = [...p.vehicleRows]; r[i] = { ...r[i], number: e.target.value }; return { ...p, vehicleRows: r }; })} /></div>
+                <div><label>Type</label>
+                  <select value={row.type || "Dumper"} onChange={e => setForm(p => { const r = [...p.vehicleRows]; r[i] = { ...r[i], type: e.target.value }; return { ...p, vehicleRows: r }; })}>
+                    <option>Dumper</option><option>Truck</option><option>Loader</option><option>JCB</option><option>Dumper 10 wheels</option><option>Dumper 12 wheels</option><option>Dumper 16 wheels</option><option>Tractor</option>
+                  </select>
                 </div>
+                <button style={{ height: 36, width: 36, border: "1px solid var(--border)", borderRadius: "var(--radius)", background: "var(--bg3)", color: "var(--red)", cursor: "pointer", fontSize: 18, lineHeight: 1, display: (form.vehicleRows||[]).length > 1 ? "flex" : "none", alignItems: "center", justifyContent: "center" }}
+                  onClick={() => setForm(p => ({ ...p, vehicleRows: p.vehicleRows.filter((_, j) => j !== i) }))}>×</button>
               </div>
-            )}
+            ))}
+            <button className="btn btn-outline btn-sm" style={{ alignSelf: "flex-start", marginTop: 2 }}
+              onClick={() => setForm(p => ({ ...p, vehicleRows: [...(p.vehicleRows || []), { number: "", type: "Dumper" }] }))}>
+              + Add Another Vehicle
+            </button>
           </div>
         </Modal>
       )}
 
       {modal === "expense" && (
-        <Modal title="Add Expense Type" onClose={() => setModal(null)}
-          footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitExpense}>Add Expense</button></>}>
+        <Modal title="Add Expense Types" onClose={() => setModal(null)}
+          footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitExpense}>Add {(form.expenseRows||[]).filter(r=>r.label?.trim()).length || ""} Expense{(form.expenseRows||[]).filter(r=>r.label?.trim()).length !== 1 ? "s" : ""}</button></>}>
           <div className="form-grid">
-            <div><label>Expense Label *</label><input placeholder="e.g. Diesel, Driver Wages" value={form.label || ""} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} /></div>
-            <div style={{ fontSize: 11, color: "var(--text3)" }}>
-              Expense types are labels only. Amounts are entered per trip.
-            </div>
+            <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 2 }}>Labels only — amounts are entered per trip. Click + to add more.</div>
+            {(form.expenseRows || [{ label: "" }]).map((row, i) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "end" }}>
+                <div><label>Expense Label *</label><input placeholder="e.g. Diesel, Driver Wages" value={row.label || ""} onChange={e => setForm(p => { const r = [...p.expenseRows]; r[i] = { label: e.target.value }; return { ...p, expenseRows: r }; })} /></div>
+                <button style={{ height: 36, width: 36, border: "1px solid var(--border)", borderRadius: "var(--radius)", background: "var(--bg3)", color: "var(--red)", cursor: "pointer", fontSize: 18, lineHeight: 1, display: (form.expenseRows||[]).length > 1 ? "flex" : "none", alignItems: "center", justifyContent: "center" }}
+                  onClick={() => setForm(p => ({ ...p, expenseRows: p.expenseRows.filter((_, j) => j !== i) }))}>×</button>
+              </div>
+            ))}
+            <button className="btn btn-outline btn-sm" style={{ alignSelf: "flex-start", marginTop: 2 }}
+              onClick={() => setForm(p => ({ ...p, expenseRows: [...(p.expenseRows || []), { label: "" }] }))}>
+              + Add Another Expense
+            </button>
           </div>
         </Modal>
       )}
