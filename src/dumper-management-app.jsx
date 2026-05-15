@@ -154,22 +154,62 @@ select option{background:var(--bg3)}
 .close-btn:hover{color:var(--text)}
 
 /* login */
-.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}
-.login-card{width:100%;max-width:700px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;box-shadow:var(--shadow)}
-.login-logo{text-align:center;margin-bottom:32px}
-.login-logo .icon{width:56px;height:56px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
-.login-logo .icon svg{width:32px;height:32px;fill:#0d1117}
-.login-logo h1{font-size:24px;letter-spacing:-.6px;font-weight:700}
-.login-logo p{font-size:13px;color:var(--text3);margin-top:6px}
-.login-admin-btn{width:100%;padding:16px;background:linear-gradient(135deg, var(--accent-dim) 0%, var(--bg3) 100%);border:2px solid var(--accent);border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;margin-bottom:24px;font-family:'DM Sans',sans-serif}
-.login-admin-btn:hover{background:var(--accent);border-color:var(--accent2);transform:translateY(-2px);box-shadow:0 4px 16px var(--accent-dim)}
-.login-admin-btn .icon-wrap{width:40px;height:40px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0d1117}
-.login-admin-btn:hover .icon-wrap{background:#0d1117;color:var(--accent)}
-.login-admin-btn .text-wrap{text-align:left}
-.login-admin-btn .text-wrap .title{font-size:16px;font-weight:700;color:var(--accent);font-family:'Syne',sans-serif}
-.login-admin-btn:hover .text-wrap .title{color:#0d1117}
-.login-admin-btn .text-wrap .subtitle{font-size:12px;color:var(--text3);margin-top:2px}
-.login-admin-btn:hover .text-wrap .subtitle{color:#0d1117;opacity:0.7}
+.login-page{min-height:100vh;display:flex;background:var(--bg)}
+.login-brand{width:360px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:48px 36px;position:relative;overflow:hidden}
+.login-brand::before{content:'';position:absolute;top:-60px;right:-60px;width:220px;height:220px;border-radius:50%;background:var(--accent);opacity:.04;pointer-events:none}
+.login-brand::after{content:'';position:absolute;bottom:-40px;left:-40px;width:160px;height:160px;border-radius:50%;background:var(--teal);opacity:.04;pointer-events:none}
+.lb-logo{display:flex;align-items:center;gap:12px;margin-bottom:52px}
+.lb-logo-icon{width:40px;height:40px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#0d1117;flex-shrink:0}
+.lb-logo-icon svg{width:22px;height:22px}
+.lb-logo h2{font-size:18px;font-family:'Syne',sans-serif;font-weight:700;color:var(--text);letter-spacing:-.3px}
+.lb-logo p{font-size:10px;color:var(--text3);margin-top:1px}
+.lb-tagline{font-size:26px;font-family:'Syne',sans-serif;font-weight:800;color:var(--text);letter-spacing:-.8px;line-height:1.25;margin-bottom:10px}
+.lb-tagline span{color:var(--accent)}
+.lb-sub{font-size:12.5px;color:var(--text3);margin-bottom:44px;line-height:1.7}
+.lb-features{display:flex;flex-direction:column;gap:18px;margin-top:auto}
+.lb-feat{display:flex;align-items:center;gap:12px}
+.lb-feat-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lb-feat-icon svg{width:15px;height:15px}
+.lb-feat-title{font-size:12px;font-weight:600;color:var(--text);font-family:'Syne',sans-serif}
+.lb-feat-sub{font-size:10.5px;color:var(--text3);margin-top:1px}
+.login-panel{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 48px;overflow-y:auto}
+.login-panel-inner{width:100%;max-width:420px}
+.lp-heading{font-size:22px;font-family:'Syne',sans-serif;font-weight:700;color:var(--text);margin-bottom:6px}
+.lp-sub{font-size:13px;color:var(--text3);margin-bottom:28px}
+.lp-admin{width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:var(--radius);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;margin-bottom:6px}
+.lp-admin:hover{background:var(--accent);transform:translateY(-1px);box-shadow:0 4px 16px var(--accent-dim)}
+.lp-admin-icon{width:34px;height:34px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#0d1117;flex-shrink:0;transition:all .2s}
+.lp-admin:hover .lp-admin-icon{background:#0d1117;color:var(--accent)}
+.lp-admin-text .t{font-size:14px;font-weight:700;color:var(--accent);font-family:'Syne',sans-serif;transition:color .2s}
+.lp-admin:hover .lp-admin-text .t{color:#0d1117}
+.lp-admin-text .s{font-size:11px;color:var(--text3);margin-top:1px;transition:color .2s}
+.lp-admin:hover .lp-admin-text .s{color:#0d1117;opacity:.7}
+.lp-admin-arrow{margin-left:auto;font-size:18px;color:var(--accent);opacity:.5;transition:opacity .2s}
+.lp-admin:hover .lp-admin-arrow{opacity:1;color:#0d1117}
+.lp-divider{display:flex;align-items:center;gap:10px;margin:20px 0 16px}
+.lp-divider hr{flex:1;border:none;border-top:1px solid var(--border);margin:0}
+.lp-divider span{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);white-space:nowrap}
+.lp-partners{display:flex;flex-direction:column;gap:7px;max-height:340px;overflow-y:auto;padding-right:2px}
+.lp-partners::-webkit-scrollbar{width:4px}
+.lp-partners::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.lp-card{width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all .15s;text-align:left;font-family:'DM Sans',sans-serif}
+.lp-card:hover{background:var(--bg3);border-color:var(--border2);transform:translateX(3px)}
+.lp-avatar{width:36px;height:36px;background:var(--bg3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-family:'Syne',sans-serif;font-weight:700;color:var(--accent);flex-shrink:0;border:1px solid var(--border)}
+.lp-card:hover .lp-avatar{border-color:var(--accent);background:var(--accent-dim)}
+.lp-name{font-size:13px;font-weight:600;color:var(--text)}
+.lp-meta{font-size:11px;color:var(--text3);margin-top:1px;display:flex;align-items:center;gap:6px}
+.lp-firm-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:.6;display:inline-block}
+.lp-mobile-hint{font-size:11px;color:var(--text3);margin-left:auto;font-variant-numeric:tabular-nums}
+.lp-arrow{font-size:16px;color:var(--text3);margin-left:6px;transition:color .15s}
+.lp-card:hover .lp-arrow{color:var(--accent)}
+@media(max-width:768px){
+  .login-page{flex-direction:column}
+  .login-brand{width:100%;padding:24px 20px;border-right:none;border-bottom:1px solid var(--border)}
+  .lb-tagline{font-size:20px}
+  .lb-sub,.lb-features{display:none}
+  .lb-logo{margin-bottom:0}
+  .login-panel{padding:24px 20px;align-items:flex-start}
+}
 
 /* divider */
 .divider{border:none;border-top:1px solid var(--border);margin:16px 0}
@@ -579,74 +619,100 @@ function calcEmi(v) {
 // ── Login Screen ──────────────────────────────────────────────────────────────
 function LoginScreen({ users, firms, onLogin }) {
   const [firmFilter, setFirmFilter] = useState("all");
-
   const visible = firmFilter === "all" ? users : users.filter(u => u.firmId === firmFilter);
 
   return (
-    <div className="login-wrap">
-      <div className="login-card">
-        <div className="login-logo">
-          <div className="icon">{Icon.truck}</div>
-          <h1>DumperTrack</h1>
-          <p>Dumper Trip & Finance Management</p>
-        </div>
+    <div className="login-page">
+      <style>{style}</style>
 
-        <button className="login-admin-btn" onClick={() => onLogin({ id: "admin", name: "Admin", role: "admin" })}>
-          <div className="icon-wrap">{Icon.admin}</div>
-          <div className="text-wrap">
-            <div className="title">Admin Panel</div>
-            <div className="subtitle">Manage firms & partners</div>
+      {/* ── Left brand panel ── */}
+      <div className="login-brand">
+        <div className="lb-logo">
+          <div className="lb-logo-icon">{Icon.truck}</div>
+          <div>
+            <h2>DumperTrack</h2>
+            <p>Fleet & Finance Management</p>
           </div>
-        </button>
-
-        <div style={{ marginBottom: 12 }}>
-          <label>Filter by Firm</label>
-          <select value={firmFilter} onChange={e => setFirmFilter(e.target.value)}>
-            <option value="all">All firms</option>
-            {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
         </div>
 
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Partner Name</th>
-                  <th>Firm</th>
-                  <th>Mobile</th>
-                  <th style={{ textAlign: 'center' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.length === 0 && (
-                  <tr>
-                    <td colSpan={5}>
-                      <div className="empty" style={{ padding: '24px' }}>
-                        <p>No partners available. Admin can add partners from Admin Panel.</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-                {visible.map((u, i) => {
-                  const firm = firms.find(f => f.id === u.firmId);
-                  return (
-                    <tr key={u.id}>
-                      <td className="td-bold">{i + 1}</td>
-                      <td className="td-bold">{u.name}</td>
-                      <td><span className="badge badge-accent">{firm?.name}</span></td>
-                      <td>{u.mobile}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button className="btn btn-primary btn-sm" onClick={() => onLogin(u)}>
-                          Login
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <div className="lb-tagline">Run your fleet.<br /><span>Track every rupee.</span></div>
+        <p className="lb-sub">
+          One app to manage trips, expenses, vehicles,<br />
+          EMI loans, and partner finances — all in real time.
+        </p>
+
+        <div className="lb-features">
+          {[
+            { icon: Icon.trips,   bg: "var(--accent-dim)",  color: "var(--accent)",  title: "Trip Management",    sub: "Log & lock every trip entry" },
+            { icon: Icon.balance, bg: "var(--teal-dim)",    color: "var(--teal)",    title: "Financial Reports",  sub: "Income, expenses & profit" },
+            { icon: Icon.vehicle, bg: "var(--blue-dim)",    color: "var(--blue)",    title: "Fleet & EMI",        sub: "Vehicles, loans & EMI tracking" },
+            { icon: Icon.wallet,  bg: "var(--purple-dim)",  color: "var(--purple)",  title: "Credit & Debit",     sub: "Full transaction history" },
+          ].map(f => (
+            <div key={f.title} className="lb-feat">
+              <div className="lb-feat-icon" style={{ background: f.bg, color: f.color }}>{f.icon}</div>
+              <div>
+                <div className="lb-feat-title">{f.title}</div>
+                <div className="lb-feat-sub">{f.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Right login panel ── */}
+      <div className="login-panel">
+        <div className="login-panel-inner">
+          <div className="lp-heading">Welcome back</div>
+          <div className="lp-sub">Select your profile to continue</div>
+
+          {/* Admin access */}
+          <button className="lp-admin" onClick={() => onLogin({ id: "admin", name: "Admin", role: "admin" })}>
+            <div className="lp-admin-icon">{Icon.admin}</div>
+            <div className="lp-admin-text">
+              <div className="t">Admin Panel</div>
+              <div className="s">Manage firms & partners</div>
+            </div>
+            <div className="lp-admin-arrow">›</div>
+          </button>
+
+          <div className="lp-divider">
+            <hr /><span>Partners</span><hr />
+          </div>
+
+          {/* Firm filter — only shown when multiple firms exist */}
+          {firms.length > 1 && (
+            <div style={{ marginBottom: 12 }}>
+              <select value={firmFilter} onChange={e => setFirmFilter(e.target.value)} style={{ width: "100%", fontSize: 12 }}>
+                <option value="all">All Firms</option>
+                {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Partner cards */}
+          <div className="lp-partners">
+            {visible.length === 0 && (
+              <div className="empty" style={{ padding: "28px 0" }}>
+                <p>No partners yet. Use Admin Panel to add partners.</p>
+              </div>
+            )}
+            {visible.map(u => {
+              const firm = firms.find(f => f.id === u.firmId);
+              return (
+                <button key={u.id} className="lp-card" onClick={() => onLogin(u)}>
+                  <div className="lp-avatar">{u.name[0].toUpperCase()}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="lp-name">{u.name}</div>
+                    <div className="lp-meta">
+                      <span className="lp-firm-dot" />
+                      <span>{firm?.name}</span>
+                    </div>
+                  </div>
+                  {u.mobile && <div className="lp-mobile-hint">{u.mobile}</div>}
+                  <div className="lp-arrow">›</div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
