@@ -25,6 +25,10 @@ export const dbToApp = {
     firmId: db.firm_id,
     number: db.number,
     type: db.type,
+    emiAmount: Number(db.emi_amount || 0),
+    emiStartDate: db.emi_start_date || null,
+    emiTenureMonths: Number(db.emi_tenure_months || 0),
+    emiDescription: db.emi_description || '',
     createdAt: db.created_at,
   }),
 
@@ -75,6 +79,10 @@ export const appToDb = {
     firm_id: app.firmId,
     number: app.number,
     type: app.type || 'Dumper',
+    emi_amount: app.emiAmount || 0,
+    emi_start_date: app.emiStartDate || null,
+    emi_tenure_months: app.emiTenureMonths || 0,
+    emi_description: app.emiDescription || '',
   }),
 
   expense: (app) => ({

@@ -204,7 +204,19 @@ select option{background:var(--bg3)}
   .fg2,.fg3{grid-template-columns:1fr}
   .topbar{padding:14px 16px 0}
   .content{padding:14px 16px 40px}
+  .filter-bar{flex-wrap:wrap}
+  .filter-bar input,.filter-bar select{min-width:100px;max-width:none;flex:1}
 }
+
+/* filter bar */
+.filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.filter-bar input,.filter-bar select{width:auto;min-width:120px;max-width:180px;padding:7px 10px;font-size:12px}
+.filter-count{font-size:11px;color:var(--text3)}
+
+/* emi */
+.emi-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
+.emi-active{background:var(--blue-dim);color:var(--blue)}
+.emi-done{background:var(--teal-dim);color:var(--teal)}
 `;
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -555,6 +567,15 @@ function Modal({ title, onClose, children, footer }) {
 
 function fmt(n) { return "₹" + Number(n).toLocaleString("en-IN"); }
 
+function calcEmi(v) {
+  if (!v.emiAmount || !v.emiStartDate || !v.emiTenureMonths) return null;
+  const start = new Date(v.emiStartDate);
+  const now = new Date();
+  const elapsed = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+  const remaining = Math.max(0, v.emiTenureMonths - elapsed);
+  return { monthly: v.emiAmount, remaining, total: remaining * v.emiAmount, done: remaining === 0 };
+}
+
 // ── Login Screen ──────────────────────────────────────────────────────────────
 function LoginScreen({ users, firms, onLogin }) {
   const [firmFilter, setFirmFilter] = useState("all");
@@ -773,6 +794,9 @@ function UserPanel({ store, user }) {
   const [editedProfitValue, setEditedProfitValue] = useState("");
   const [editingClientPaid, setEditingClientPaid] = useState(false);
   const [clientPaidValue, setClientPaidValue] = useState("");
+  const [tripFilter, setTripFilter] = useState({ client: "", partner: "", vehicle: "", dateFrom: "", dateTo: "" });
+  const [txFilter, setTxFilter] = useState({ type: "all", partner: "", dateFrom: "", dateTo: "" });
+  const [vehFilter, setVehFilter] = useState({ type: "all", emi: "all" });
 
   const firm = store.firms.find(f => f.id === user.firmId);
   const partners = store.firmUsers(user.firmId);
@@ -841,7 +865,15 @@ function UserPanel({ store, user }) {
 
   const submitVehicle = () => {
     if (!form.number?.trim()) return;
-    store.addVehicle({ firmId: user.firmId, number: form.number.trim(), type: form.type || "Dumper" });
+    store.addVehicle({
+      firmId: user.firmId,
+      number: form.number.trim(),
+      type: form.type || "Dumper",
+      emiAmount: Number(form.emiAmount) || 0,
+      emiStartDate: form.emiStartDate || null,
+      emiTenureMonths: Number(form.emiTenureMonths) || 0,
+      emiDescription: form.emiDescription?.trim() || "",
+    });
     setModal(null); setForm({});
   };
 
@@ -1085,42 +1117,73 @@ function UserPanel({ store, user }) {
             </div>
             <div className="content">
               <div className="card">
-                <div className="table-wrap">
-                  <table>
-                    <thead><tr><th>Date</th><th>Client</th><th>Place</th><th>Item</th><th>Driver</th><th>Vehicle</th><th>Trips</th><th>Rate</th><th>Income</th><th>Received</th><th>Pending</th><th>Expenses</th><th>Profit</th><th>Partner</th><th></th></tr></thead>
-                    <tbody>
-                      {trips.length === 0 && <tr><td colSpan={15}><div className="empty"><p>No trips yet. Add the first trip.</p></div></td></tr>}
-                      {[...trips].reverse().map(t => {
-                        const c = store.calcTrip(t);
-                        const by = partners.find(p => p.id === t.partnerId);
-                        const veh = vehicles.find(v => v.id === t.vehicleId);
-                        const isEdited = t.editedProfit !== undefined;
-                        return (
-                          <tr key={t.id}>
-                            <td>{t.date}</td>
-                            <td className="td-bold">{t.clientName}</td>
-                            <td>{t.place}</td>
-                            <td><span className="badge badge-purple">{t.item}</span></td>
-                            <td>{t.driverName}</td>
-                            <td style={{ fontSize: 11 }}>{veh?.number}</td>
-                            <td className="td-bold">{t.tripCount}</td>
-                            <td>{fmt(t.ratePerTrip)}</td>
-                            <td className="td-accent">{fmt(c.income)}</td>
-                            <td className="td-teal">{fmt(c.clientPaid)}</td>
-                            <td className={c.pending > 0 ? "td-red" : "td-teal"}>{fmt(c.pending)}</td>
-                            <td className="td-red">{fmt(c.totalExp)}</td>
-                            <td className={c.profit >= 0 ? "td-teal" : "td-red"}>
-                              {fmt(c.profit)}
-                              {isEdited && <span style={{ fontSize: 9, marginLeft: 4, opacity: 0.7 }}>✎</span>}
-                            </td>
-                            <td><span className="badge badge-gray">{by?.name?.split(" ")[0]}</span></td>
-                            <td><button className="btn btn-outline btn-sm" onClick={() => setTripDetail(t)}>Detail</button></td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="filter-bar">
+                  <input placeholder="Search client…" value={tripFilter.client} onChange={e => setTripFilter(p => ({ ...p, client: e.target.value }))} style={{ flex: 1, minWidth: 130 }} />
+                  <select value={tripFilter.partner} onChange={e => setTripFilter(p => ({ ...p, partner: e.target.value }))}>
+                    <option value="">All Partners</option>
+                    {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  <select value={tripFilter.vehicle} onChange={e => setTripFilter(p => ({ ...p, vehicle: e.target.value }))}>
+                    <option value="">All Vehicles</option>
+                    {vehicles.map(v => <option key={v.id} value={v.id}>{v.number}</option>)}
+                  </select>
+                  <input type="date" value={tripFilter.dateFrom} onChange={e => setTripFilter(p => ({ ...p, dateFrom: e.target.value }))} title="From date" />
+                  <input type="date" value={tripFilter.dateTo} onChange={e => setTripFilter(p => ({ ...p, dateTo: e.target.value }))} title="To date" />
+                  {(tripFilter.client || tripFilter.partner || tripFilter.vehicle || tripFilter.dateFrom || tripFilter.dateTo) && (
+                    <button className="btn btn-outline btn-sm" onClick={() => setTripFilter({ client: "", partner: "", vehicle: "", dateFrom: "", dateTo: "" })}>Clear</button>
+                  )}
                 </div>
+                {(() => {
+                  const filtered = [...trips].reverse().filter(t => {
+                    if (tripFilter.client && !t.clientName.toLowerCase().includes(tripFilter.client.toLowerCase())) return false;
+                    if (tripFilter.partner && t.partnerId !== tripFilter.partner) return false;
+                    if (tripFilter.vehicle && t.vehicleId !== tripFilter.vehicle) return false;
+                    if (tripFilter.dateFrom && t.date < tripFilter.dateFrom) return false;
+                    if (tripFilter.dateTo && t.date > tripFilter.dateTo) return false;
+                    return true;
+                  });
+                  return (
+                    <>
+                      <div className="filter-count" style={{ marginBottom: 10 }}>Showing {filtered.length} of {trips.length} entries</div>
+                      <div className="table-wrap">
+                        <table>
+                          <thead><tr><th>Date</th><th>Client</th><th>Place</th><th>Item</th><th>Driver</th><th>Vehicle</th><th>Trips</th><th>Rate</th><th>Income</th><th>Received</th><th>Pending</th><th>Expenses</th><th>Profit</th><th>Partner</th><th></th></tr></thead>
+                          <tbody>
+                            {filtered.length === 0 && <tr><td colSpan={15}><div className="empty"><p>No trips match the filter.</p></div></td></tr>}
+                            {filtered.map(t => {
+                              const c = store.calcTrip(t);
+                              const by = partners.find(p => p.id === t.partnerId);
+                              const veh = vehicles.find(v => v.id === t.vehicleId);
+                              const isEdited = t.editedProfit !== undefined;
+                              return (
+                                <tr key={t.id}>
+                                  <td>{t.date}</td>
+                                  <td className="td-bold">{t.clientName}</td>
+                                  <td>{t.place}</td>
+                                  <td><span className="badge badge-purple">{t.item}</span></td>
+                                  <td>{t.driverName}</td>
+                                  <td style={{ fontSize: 11 }}>{veh?.number}</td>
+                                  <td className="td-bold">{t.tripCount}</td>
+                                  <td>{fmt(t.ratePerTrip)}</td>
+                                  <td className="td-accent">{fmt(c.income)}</td>
+                                  <td className="td-teal">{fmt(c.clientPaid)}</td>
+                                  <td className={c.pending > 0 ? "td-red" : "td-teal"}>{fmt(c.pending)}</td>
+                                  <td className="td-red">{fmt(c.totalExp)}</td>
+                                  <td className={c.profit >= 0 ? "td-teal" : "td-red"}>
+                                    {fmt(c.profit)}
+                                    {isEdited && <span style={{ fontSize: 9, marginLeft: 4, opacity: 0.7 }}>✎</span>}
+                                  </td>
+                                  <td><span className="badge badge-gray">{by?.name?.split(" ")[0]}</span></td>
+                                  <td><button className="btn btn-outline btn-sm" onClick={() => setTripDetail(t)}>Detail</button></td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </>
@@ -1189,41 +1252,71 @@ function UserPanel({ store, user }) {
                   <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>All Transactions</h3>
                   <p style={{ fontSize: 11, color: "var(--text3)" }}>Complete transaction history</p>
                 </div>
-                <div className="table-wrap">
-                  <table>
-                    <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Category</th><th>Description</th><th>Payment</th><th>Reference</th><th>Partner</th></tr></thead>
-                    <tbody>
-                      {transactions.length === 0 && <tr><td colSpan={8}><div className="empty"><p>No transactions yet. Add your first credit or debit entry.</p></div></td></tr>}
-                      {[...transactions].reverse().map(tx => {
-                        const by = partners.find(p => p.id === tx.partnerId);
-                        return (
-                          <tr key={tx.id}>
-                            <td>{tx.date}</td>
-                            <td>
-                              {tx.type === 'credit' ? (
-                                <span className="badge badge-teal" style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
-                                  {Icon.arrowUp} Credit
-                                </span>
-                              ) : (
-                                <span className="badge badge-red" style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
-                                  {Icon.arrowDown} Debit
-                                </span>
-                              )}
-                            </td>
-                            <td className={tx.type === 'credit' ? 'td-teal' : 'td-red'} style={{ fontWeight: 600 }}>
-                              {tx.type === 'credit' ? '+' : '-'}{fmt(tx.amount)}
-                            </td>
-                            <td className="td-bold">{tx.category}</td>
-                            <td style={{ fontSize: 12, color: 'var(--text3)' }}>{tx.description || '—'}</td>
-                            <td><span className="badge badge-gray">{tx.paymentMethod || '—'}</span></td>
-                            <td style={{ fontSize: 11 }}>{tx.referenceNumber || '—'}</td>
-                            <td><span className="badge badge-gray">{by?.name?.split(" ")[0]}</span></td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="filter-bar">
+                  <select value={txFilter.type} onChange={e => setTxFilter(p => ({ ...p, type: e.target.value }))}>
+                    <option value="all">All Types</option>
+                    <option value="credit">Credit only</option>
+                    <option value="debit">Debit only</option>
+                  </select>
+                  <select value={txFilter.partner} onChange={e => setTxFilter(p => ({ ...p, partner: e.target.value }))}>
+                    <option value="">All Partners</option>
+                    {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  <input type="date" value={txFilter.dateFrom} onChange={e => setTxFilter(p => ({ ...p, dateFrom: e.target.value }))} title="From date" />
+                  <input type="date" value={txFilter.dateTo} onChange={e => setTxFilter(p => ({ ...p, dateTo: e.target.value }))} title="To date" />
+                  {(txFilter.type !== "all" || txFilter.partner || txFilter.dateFrom || txFilter.dateTo) && (
+                    <button className="btn btn-outline btn-sm" onClick={() => setTxFilter({ type: "all", partner: "", dateFrom: "", dateTo: "" })}>Clear</button>
+                  )}
                 </div>
+                {(() => {
+                  const filtered = [...transactions].reverse().filter(tx => {
+                    if (txFilter.type !== "all" && tx.type !== txFilter.type) return false;
+                    if (txFilter.partner && tx.partnerId !== txFilter.partner) return false;
+                    if (txFilter.dateFrom && tx.date < txFilter.dateFrom) return false;
+                    if (txFilter.dateTo && tx.date > txFilter.dateTo) return false;
+                    return true;
+                  });
+                  return (
+                    <>
+                      <div className="filter-count" style={{ marginBottom: 10 }}>Showing {filtered.length} of {transactions.length} transactions</div>
+                      <div className="table-wrap">
+                        <table>
+                          <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Category</th><th>Description</th><th>Payment</th><th>Reference</th><th>Partner</th></tr></thead>
+                          <tbody>
+                            {filtered.length === 0 && <tr><td colSpan={8}><div className="empty"><p>No transactions match the filter.</p></div></td></tr>}
+                            {filtered.map(tx => {
+                              const by = partners.find(p => p.id === tx.partnerId);
+                              return (
+                                <tr key={tx.id}>
+                                  <td>{tx.date}</td>
+                                  <td>
+                                    {tx.type === 'credit' ? (
+                                      <span className="badge badge-teal" style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
+                                        {Icon.arrowUp} Credit
+                                      </span>
+                                    ) : (
+                                      <span className="badge badge-red" style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
+                                        {Icon.arrowDown} Debit
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className={tx.type === 'credit' ? 'td-teal' : 'td-red'} style={{ fontWeight: 600 }}>
+                                    {tx.type === 'credit' ? '+' : '-'}{fmt(tx.amount)}
+                                  </td>
+                                  <td className="td-bold">{tx.category}</td>
+                                  <td style={{ fontSize: 12, color: 'var(--text3)' }}>{tx.description || '—'}</td>
+                                  <td><span className="badge badge-gray">{tx.paymentMethod || '—'}</span></td>
+                                  <td style={{ fontSize: 11 }}>{tx.referenceNumber || '—'}</td>
+                                  <td><span className="badge badge-gray">{by?.name?.split(" ")[0]}</span></td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </>
@@ -1273,23 +1366,103 @@ function UserPanel({ store, user }) {
               </button>
             </div>
             <div className="content">
-              <div className="grid g3">
-                {vehicles.length === 0 && <div className="card"><div className="empty"><p>No vehicles yet.</p></div></div>}
-                {vehicles.map(v => (
-                  <div key={v.id} className="card">
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                      <div style={{ width: 36, height: 36, background: "var(--accent-dim)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}>{Icon.vehicle}</div>
-                      <div>
-                        <div style={{ fontWeight: 600, fontFamily: "Syne", fontSize: 14 }}>{v.number}</div>
-                        <div style={{ fontSize: 11, color: "var(--text3)" }}>{v.type}</div>
-                      </div>
+              {vehicles.some(v => v.emiAmount > 0) && (() => {
+                const activeEmiVehicles = vehicles.filter(v => { const e = calcEmi(v); return e && !e.done; });
+                const totalMonthly = activeEmiVehicles.reduce((s, v) => s + v.emiAmount, 0);
+                const totalOutstanding = activeEmiVehicles.reduce((s, v) => s + calcEmi(v).total, 0);
+                return (
+                  <div className="grid g3" style={{ marginBottom: 20 }}>
+                    <div className="stat-card blue">
+                      <div className="stat-label">Monthly EMI Load</div>
+                      <div className="stat-value">{fmt(totalMonthly)}</div>
+                      <div className="stat-sub">{activeEmiVehicles.length} active EMIs</div>
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--text3)" }}>
-                      Trips: <span style={{ color: "var(--teal)", fontWeight: 500 }}>{trips.filter(t => t.vehicleId === v.id).reduce((s, t) => s + t.tripCount, 0)}</span>
+                    <div className="stat-card red">
+                      <div className="stat-label">Total Outstanding</div>
+                      <div className="stat-value">{fmt(totalOutstanding)}</div>
+                      <div className="stat-sub">Across all vehicles</div>
+                    </div>
+                    <div className="stat-card accent">
+                      <div className="stat-label">Vehicles with EMI</div>
+                      <div className="stat-value">{vehicles.filter(v => v.emiAmount > 0).length}</div>
+                      <div className="stat-sub">of {vehicles.length} total</div>
                     </div>
                   </div>
-                ))}
+                );
+              })()}
+              <div className="filter-bar">
+                <select value={vehFilter.type} onChange={e => setVehFilter(p => ({ ...p, type: e.target.value }))}>
+                  <option value="all">All Types</option>
+                  {[...new Set(vehicles.map(v => v.type))].sort().map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <select value={vehFilter.emi} onChange={e => setVehFilter(p => ({ ...p, emi: e.target.value }))}>
+                  <option value="all">All EMI Status</option>
+                  <option value="active">Active EMI</option>
+                  <option value="done">EMI Complete</option>
+                  <option value="none">No EMI</option>
+                </select>
+                {(vehFilter.type !== "all" || vehFilter.emi !== "all") && (
+                  <button className="btn btn-outline btn-sm" onClick={() => setVehFilter({ type: "all", emi: "all" })}>Clear</button>
+                )}
               </div>
+              {(() => {
+                const filtered = vehicles.filter(v => {
+                  if (vehFilter.type !== "all" && v.type !== vehFilter.type) return false;
+                  if (vehFilter.emi !== "all") {
+                    const e = calcEmi(v);
+                    if (vehFilter.emi === "active" && !(e && !e.done)) return false;
+                    if (vehFilter.emi === "done" && !(e && e.done)) return false;
+                    if (vehFilter.emi === "none" && v.emiAmount > 0) return false;
+                  }
+                  return true;
+                });
+                return (
+                  <div className="grid g3">
+                    {filtered.length === 0 && <div className="card"><div className="empty"><p>No vehicles match the filter.</p></div></div>}
+                    {filtered.map(v => {
+                      const emi = calcEmi(v);
+                      return (
+                        <div key={v.id} className="card">
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div style={{ width: 36, height: 36, background: "var(--accent-dim)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}>{Icon.vehicle}</div>
+                              <div>
+                                <div style={{ fontWeight: 600, fontFamily: "Syne", fontSize: 14 }}>{v.number}</div>
+                                <div style={{ fontSize: 11, color: "var(--text3)" }}>{v.type}</div>
+                              </div>
+                            </div>
+                            {emi && <span className={`emi-tag ${emi.done ? "emi-done" : "emi-active"}`}>{emi.done ? "EMI Done" : "EMI Active"}</span>}
+                          </div>
+                          <div style={{ display: "grid", gap: 6, fontSize: 12 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <span style={{ color: "var(--text3)" }}>Total Trips</span>
+                              <span style={{ color: "var(--teal)", fontWeight: 500 }}>{trips.filter(t => t.vehicleId === v.id).reduce((s, t) => s + t.tripCount, 0)}</span>
+                            </div>
+                            {emi && !emi.done && (
+                              <>
+                                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                  <span style={{ color: "var(--text3)" }}>Monthly EMI</span>
+                                  <span style={{ color: "var(--blue)", fontWeight: 600 }}>{fmt(emi.monthly)}</span>
+                                </div>
+                                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                  <span style={{ color: "var(--text3)" }}>Remaining</span>
+                                  <span style={{ color: "var(--text)", fontWeight: 500 }}>{emi.remaining} mo · {fmt(emi.total)}</span>
+                                </div>
+                              </>
+                            )}
+                            {emi && emi.done && (
+                              <div style={{ color: "var(--teal)", fontSize: 11 }}>Loan fully paid</div>
+                            )}
+                            {v.emiDescription && (
+                              <div style={{ color: "var(--text3)", fontSize: 11, marginTop: 2, borderTop: "1px solid var(--border)", paddingTop: 6 }}>{v.emiDescription}</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </>
         )}
@@ -1514,12 +1687,33 @@ function UserPanel({ store, user }) {
         <Modal title="Add Vehicle" onClose={() => setModal(null)}
           footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitVehicle}>Add Vehicle</button></>}>
           <div className="form-grid">
-            <div><label>Vehicle Number *</label><input placeholder="e.g. RJ-14-GA-1234" value={form.number || ""} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></div>
-            <div><label>Type</label>
-              <select value={form.type || "Dumper"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
-                <option>Dumper</option><option>Truck</option><option>Loader</option><option>JCB</option><option>Dumper 10 wheels</option><option>Dumper 12 wheels</option><option>Dumper 16 wheels</option><option>Tractor</option>
-              </select>
+            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+              <div><label>Vehicle Number *</label><input placeholder="e.g. RJ-14-GA-1234" value={form.number || ""} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></div>
+              <div><label>Type</label>
+                <select value={form.type || "Dumper"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
+                  <option>Dumper</option><option>Truck</option><option>Loader</option><option>JCB</option><option>Dumper 10 wheels</option><option>Dumper 12 wheels</option><option>Dumper 16 wheels</option><option>Tractor</option>
+                </select>
+              </div>
             </div>
+            <hr className="divider" />
+            <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: -4 }}>EMI Details <span style={{ opacity: .6 }}>(optional — leave blank if no loan)</span></div>
+            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+              <div><label>Monthly EMI (₹)</label><input type="number" min="0" placeholder="e.g. 25000" value={form.emiAmount || ""} onChange={e => setForm(p => ({ ...p, emiAmount: e.target.value }))} /></div>
+              <div><label>Tenure (Months)</label><input type="number" min="1" placeholder="e.g. 36" value={form.emiTenureMonths || ""} onChange={e => setForm(p => ({ ...p, emiTenureMonths: e.target.value }))} /></div>
+            </div>
+            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+              <div><label>EMI Start Date</label><input type="date" value={form.emiStartDate || ""} onChange={e => setForm(p => ({ ...p, emiStartDate: e.target.value }))} /></div>
+              <div><label>Loan / Bank Note</label><input placeholder="e.g. SBI Loan #123456" value={form.emiDescription || ""} onChange={e => setForm(p => ({ ...p, emiDescription: e.target.value }))} /></div>
+            </div>
+            {form.emiAmount > 0 && form.emiTenureMonths > 0 && (
+              <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 12 }}>
+                <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".7px", marginBottom: 8 }}>EMI Preview</div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--text2)" }}>Total Loan Cost</span>
+                  <span style={{ color: "var(--blue)", fontWeight: 600, fontFamily: "Syne" }}>{fmt(Number(form.emiAmount) * Number(form.emiTenureMonths))}</span>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}
