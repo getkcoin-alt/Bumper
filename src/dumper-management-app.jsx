@@ -47,7 +47,7 @@ h1,h2,h3,h4{font-family:'Syne',sans-serif;font-weight:700}
 ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
 
 /* layout */
-.app{display:flex;height:100vh;overflow:hidden}
+.app{display:flex;height:100dvh;overflow:hidden}
 .sidebar{width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
 .main{flex:1;overflow-y:auto;background:var(--bg)}
 
@@ -135,8 +135,9 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 
 /* forms */
 .form-grid{display:grid;gap:14px}
-.fg2{grid-template-columns:1fr 1fr}
-.fg3{grid-template-columns:1fr 1fr 1fr}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.veh-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
 label{font-size:12px;color:var(--text3);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
 input,select,textarea{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13.5px;font-family:'DM Sans',sans-serif;outline:none;transition:border .15s}
 input:focus,select:focus,textarea:focus{border-color:var(--accent)}
@@ -241,11 +242,20 @@ select option{background:var(--bg3)}
   .logout-btn{padding:8px 12px;font-size:11px;white-space:nowrap}
   .main{overflow-y:auto}
   .g2,.g3,.g4{grid-template-columns:1fr}
-  .fg2,.fg3{grid-template-columns:1fr}
-  .topbar{padding:14px 16px 0}
+  .fg2,.fg3{grid-template-columns:1fr;gap:10px}
+  .veh-row{grid-template-columns:1fr 1fr}
+  .topbar{padding:14px 16px 0;flex-wrap:wrap;gap:10px}
+  .page-title{font-size:18px}
+  .stat-value{font-size:22px;letter-spacing:-.5px}
   .content{padding:14px 16px 40px}
   .filter-bar{flex-wrap:wrap}
   .filter-bar input,.filter-bar select{min-width:100px;max-width:none;flex:1}
+  .overlay{padding:0;align-items:flex-end}
+  .modal{max-width:100%;border-radius:var(--radius-lg) var(--radius-lg) 0 0;max-height:92dvh}
+  .modal-header{padding:14px 18px 12px}
+  .modal-body{padding:14px 18px}
+  .modal-footer{padding:10px 18px}
+  .card{padding:14px}
 }
 
 /* filter bar */
@@ -1536,15 +1546,15 @@ function UserPanel({ store, user }) {
                       const emi = calcEmi(v);
                       return (
                         <div key={v.id} className="card">
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <div style={{ width: 36, height: 36, background: "var(--accent-dim)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}>{Icon.vehicle}</div>
+                              <div style={{ width: 36, height: 36, background: "var(--accent-dim)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)", flexShrink: 0 }}>{Icon.vehicle}</div>
                               <div>
                                 <div style={{ fontWeight: 600, fontFamily: "Syne", fontSize: 14 }}>{v.number}</div>
                                 <div style={{ fontSize: 11, color: "var(--text3)" }}>{v.type}</div>
                               </div>
                             </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                               {emi && <span className={`emi-tag ${emi.done ? "emi-done" : "emi-active"}`}>{emi.done ? "EMI Done" : "EMI Active"}</span>}
                               <button className="btn btn-outline btn-sm" onClick={() => { setModal("editVehicle"); setForm({ id: v.id, number: v.number, type: v.type, emiAmount: v.emiAmount || "", emiStartDate: v.emiStartDate || "", emiTenureMonths: v.emiTenureMonths || "", emiDescription: v.emiDescription || "" }); }}>✎ Edit</button>
                             </div>
@@ -1723,11 +1733,11 @@ function UserPanel({ store, user }) {
         <Modal title="Add Trip Entry" onClose={() => setModal(null)}
           footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitTrip}>{Icon.lock} Lock & Save</button></>}>
           <div className="form-grid">
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div><label>Client Name *</label><input placeholder="Client / builder name" value={form.clientName || ""} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} /></div>
               <div><label>Date *</label><input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} /></div>
             </div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div><label>Partner (Entry by) *</label>
                 <select value={form.partnerId || ""} onChange={e => setForm(p => ({ ...p, partnerId: e.target.value }))}>
                   <option value="">— Select —</option>
@@ -1736,7 +1746,7 @@ function UserPanel({ store, user }) {
               </div>
               <div><label>Driver Name *</label><input placeholder="Driver's name" value={form.driverName || ""} onChange={e => setForm(p => ({ ...p, driverName: e.target.value }))} /></div>
             </div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div><label>Vehicle *</label>
                 <select value={form.vehicleId || ""} onChange={e => setForm(p => ({ ...p, vehicleId: e.target.value }))}>
                   <option value="">— Select Vehicle —</option>
@@ -1745,7 +1755,7 @@ function UserPanel({ store, user }) {
               </div>
               <div><label>Place / Location *</label><input placeholder="Site or quarry location" value={form.place || ""} onChange={e => setForm(p => ({ ...p, place: e.target.value }))} /></div>
             </div>
-            <div className="fg3" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr 1fr" }}>
+            <div className="fg3">
               <div><label>Item *</label>
                 <select value={form.item || ""} onChange={e => setForm(p => ({ ...p, item: e.target.value }))}>
                   <option value="">— Select —</option>
@@ -1808,7 +1818,7 @@ function UserPanel({ store, user }) {
           <div className="form-grid">
             <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 2 }}>Enter one vehicle per row. Click + to add more.</div>
             {(form.vehicleRows || [{ number: "", type: "Dumper" }]).map((row, i) => (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "end" }}>
+              <div key={i} className="veh-row">
                 <div><label>Vehicle Number *</label><input placeholder="e.g. RJ-14-GA-1234" value={row.number || ""} onChange={e => setForm(p => { const r = [...p.vehicleRows]; r[i] = { ...r[i], number: e.target.value }; return { ...p, vehicleRows: r }; })} /></div>
                 <div><label>Type</label>
                   <select value={row.type || "Dumper"} onChange={e => setForm(p => { const r = [...p.vehicleRows]; r[i] = { ...r[i], type: e.target.value }; return { ...p, vehicleRows: r }; })}>
@@ -1831,7 +1841,7 @@ function UserPanel({ store, user }) {
         <Modal title="Edit Vehicle" onClose={() => { setModal(null); setForm({}); }}
           footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitEditVehicle}>Save Changes</button></>}>
           <div className="form-grid">
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div><label>Vehicle Number *</label><input placeholder="e.g. RJ-14-GA-1234" value={form.number || ""} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></div>
               <div><label>Type</label>
                 <select value={form.type || "Dumper"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
@@ -1841,11 +1851,11 @@ function UserPanel({ store, user }) {
             </div>
             <hr className="divider" />
             <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: -4 }}>EMI Details <span style={{ opacity: .6 }}>(leave blank to remove EMI)</span></div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div><label>Monthly EMI (₹)</label><input type="number" min="0" placeholder="e.g. 25000" value={form.emiAmount || ""} onChange={e => setForm(p => ({ ...p, emiAmount: e.target.value }))} /></div>
               <div><label>Tenure (Months)</label><input type="number" min="1" placeholder="e.g. 36" value={form.emiTenureMonths || ""} onChange={e => setForm(p => ({ ...p, emiTenureMonths: e.target.value }))} /></div>
             </div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div><label>EMI Start Date</label><input type="date" value={form.emiStartDate || ""} onChange={e => setForm(p => ({ ...p, emiStartDate: e.target.value }))} /></div>
               <div><label>Loan / Bank Note</label><input placeholder="e.g. SBI Loan #123456" value={form.emiDescription || ""} onChange={e => setForm(p => ({ ...p, emiDescription: e.target.value }))} /></div>
             </div>
@@ -1896,7 +1906,7 @@ function UserPanel({ store, user }) {
         <Modal title="Add Credit/Debit Transaction" onClose={() => setModal(null)}
           footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitTransaction}>Save Transaction</button></>}>
           <div className="form-grid">
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div>
                 <label>Transaction Type *</label>
                 <select value={form.type || "credit"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
@@ -1906,7 +1916,7 @@ function UserPanel({ store, user }) {
               </div>
               <div><label>Amount (₹) *</label><input type="number" min="0" step="0.01" placeholder="e.g. 5000" value={form.amount || ""} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></div>
             </div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div>
                 <label>Category *</label>
                 <select value={form.category || ""} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
@@ -1919,7 +1929,7 @@ function UserPanel({ store, user }) {
               <div><label>Date *</label><input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} /></div>
             </div>
             <div><label>Description</label><input placeholder="Brief description of transaction" value={form.description || ""} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div>
                 <label>Payment Method</label>
                 <select value={form.paymentMethod || ""} onChange={e => setForm(p => ({ ...p, paymentMethod: e.target.value }))}>
@@ -1992,7 +2002,7 @@ function UserPanel({ store, user }) {
         return (
           <Modal title="Trip Detail" onClose={() => { setTripDetail(null); setEditingProfit(false); setEditedProfitValue(""); setEditingClientPaid(false); setClientPaidValue(""); }}>
             <div style={{ display: "grid", gap: 12 }}>
-              <div className="grid g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div className="grid g2" style={{ gap: 10 }}>
                 {[['Client', tripDetail.clientName], ['Date', tripDetail.date], ['Driver', tripDetail.driverName], ['Vehicle', veh?.number], ['Place', tripDetail.place], ['Item', tripDetail.item], ['No. of Trips', tripDetail.tripCount], ['Rate/Trip', fmt(tripDetail.ratePerTrip)], ['Entered by', by?.name]].map(([k, v]) => (
                   <div key={k} className="card-sm">
                     <div style={{ fontSize: 10, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".7px" }}>{k}</div>
