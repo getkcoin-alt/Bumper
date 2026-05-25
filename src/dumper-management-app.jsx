@@ -663,7 +663,7 @@ function LoginScreen({ users, firms, onLogin }) {
           </div>
         </div>
 
-        <div className="lb-tagline">Run your fleet.<br /><span>Track every rupee.</span></div>
+        <div className="lb-tagline">Every trip.<br />Every rupee.<br /><span>Always in control.</span></div>
         <p className="lb-sub">
           One app to manage trips, expenses, vehicles,<br />
           EMI loans, and partner finances — all in real time.
