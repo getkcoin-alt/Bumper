@@ -608,12 +608,29 @@ function useStore() {
     };
   };
 
+  const resetAllData = async () => {
+    try {
+      await supabase.from('trips').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('vehicles').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('users').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('firms').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      setFirms([]); setUsers([]); setVehicles([]);
+      setExpenses([]); setTrips([]); setTransactions([]);
+    } catch (error) {
+      console.error('Error resetting data:', error);
+      alert('Failed to reset data: ' + error.message);
+      throw error;
+    }
+  };
+
   return {
     firms, users, vehicles, expenses, trips, transactions, currentUser, setCurrentUser, loading,
 
     firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions,
     addFirm, addUser, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction,
-    calcTrip, firmSummary,
+    calcTrip, firmSummary, resetAllData,
   };
 }
 
@@ -753,6 +770,19 @@ function AdminPanel({ store }) {
   const [tab, setTab] = useState("firms");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetting, setResetting] = useState(false);
+
+  const handleReset = async () => {
+    if (resetConfirm !== "RESET") return;
+    setResetting(true);
+    try {
+      await store.resetAllData();
+      setModal(null); setResetConfirm("");
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const navItems = [
     { id: "firms", label: "Firms", icon: Icon.firms },
@@ -787,6 +817,9 @@ function AdminPanel({ store }) {
           </button>
         ))}
         <div className="sidebar-footer">
+          <button className="btn btn-danger btn-sm" style={{ width: "100%", marginBottom: 8, justifyContent: "center" }} onClick={() => { setModal("reset"); setResetConfirm(""); }}>
+            ⚠ Reset All Data
+          </button>
           <button className="logout-btn" onClick={() => store.setCurrentUser(null)}>
             {Icon.logout} Sign out
           </button>
@@ -870,6 +903,31 @@ function AdminPanel({ store }) {
                 <option value="">— Select Firm —</option>
                 {store.firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
               </select>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {modal === "reset" && (
+        <Modal title="Reset All Data" onClose={() => { setModal(null); setResetConfirm(""); }}
+          footer={
+            <>
+              <button className="btn btn-outline" onClick={() => { setModal(null); setResetConfirm(""); }}>Cancel</button>
+              <button className="btn btn-danger" onClick={handleReset} disabled={resetConfirm !== "RESET" || resetting}>
+                {resetting ? "Deleting…" : "Delete Everything"}
+              </button>
+            </>
+          }>
+          <div className="form-grid">
+            <div style={{ background: "var(--red-dim)", border: "1px solid var(--red)", borderRadius: "var(--radius)", padding: 14, fontSize: 13 }}>
+              <div style={{ fontWeight: 600, color: "var(--red)", marginBottom: 6 }}>⚠ This cannot be undone</div>
+              <div style={{ color: "var(--text2)", lineHeight: 1.6 }}>
+                All trips, transactions, expenses, vehicles, partners, and firms will be permanently deleted for all users.
+              </div>
+            </div>
+            <div>
+              <label>Type <strong style={{ color: "var(--red)", fontFamily: "monospace" }}>RESET</strong> to confirm</label>
+              <input placeholder="RESET" value={resetConfirm} onChange={e => setResetConfirm(e.target.value)} style={{ borderColor: resetConfirm === "RESET" ? "var(--red)" : "" }} />
             </div>
           </div>
         </Modal>
