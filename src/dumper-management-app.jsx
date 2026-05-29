@@ -263,7 +263,22 @@ select option{background:var(--bg3)}
 .filter-bar input,.filter-bar select{width:auto;min-width:120px;max-width:180px;padding:7px 10px;font-size:12px}
 .filter-count{font-size:11px;color:var(--text3)}
 
-/* emi */
+/* trip cards (mobile) */
+.trip-cards{display:none;flex-direction:column;gap:10px}
+.trip-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;cursor:pointer;transition:border-color .15s}
+.trip-card:active{border-color:var(--border2)}
+.tc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.tc-date{font-size:11px;color:var(--text3)}
+.tc-client{font-size:16px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text);margin-bottom:3px}
+.tc-meta{font-size:11px;color:var(--text3);margin-bottom:10px}
+.tc-nums{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tc-num{background:var(--bg2);border-radius:8px;padding:8px 10px}
+.tc-num-label{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:2px}
+.tc-num-val{font-size:15px;font-weight:700;font-family:'Syne',sans-serif}
+@media(max-width:768px){
+  .trip-table{display:none}
+  .trip-cards{display:flex}
+}
 .emi-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
 .emi-active{background:var(--blue-dim);color:var(--blue)}
 .emi-done{background:var(--teal-dim);color:var(--teal)}
@@ -1342,7 +1357,9 @@ function UserPanel({ store, user }) {
                   return (
                     <>
                       <div className="filter-count" style={{ marginBottom: 10 }}>Showing {filtered.length} of {trips.length} entries</div>
-                      <div className="table-wrap">
+
+                      {/* ── Desktop table ── */}
+                      <div className="trip-table table-wrap">
                         <table>
                           <thead><tr><th>Date</th><th>Client</th><th>Place</th><th>Item</th><th>Driver</th><th>Vehicle</th><th>Trips</th><th>Rate</th><th>Income</th><th>Received</th><th>Pending</th><th>Expenses</th><th>Profit</th><th>Partner</th><th></th></tr></thead>
                           <tbody>
@@ -1377,6 +1394,42 @@ function UserPanel({ store, user }) {
                             })}
                           </tbody>
                         </table>
+                      </div>
+
+                      {/* ── Mobile cards ── */}
+                      <div className="trip-cards">
+                        {filtered.length === 0 && <div className="empty"><p>No trips match the filter.</p></div>}
+                        {filtered.map(t => {
+                          const c = store.calcTrip(t);
+                          const veh = vehicles.find(v => v.id === t.vehicleId);
+                          const by = partners.find(p => p.id === t.partnerId);
+                          return (
+                            <div key={t.id} className="trip-card" onClick={() => setTripDetail(t)}>
+                              <div className="tc-top">
+                                <span className="tc-date">{t.date}</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <span className="badge badge-purple">{t.item}</span>
+                                  <span style={{ fontSize: 11, color: "var(--text3)" }}>{t.tripCount} trips</span>
+                                </div>
+                              </div>
+                              <div className="tc-client">{t.clientName}</div>
+                              <div className="tc-meta">{t.place}{veh ? ` · ${veh.number}` : ""}{by ? ` · ${by.name.split(" ")[0]}` : ""}</div>
+                              <div className="tc-nums">
+                                <div className="tc-num">
+                                  <div className="tc-num-label">Income</div>
+                                  <div className="tc-num-val" style={{ color: "var(--accent)" }}>{fmt(c.income)}</div>
+                                </div>
+                                <div className="tc-num">
+                                  <div className="tc-num-label">Profit</div>
+                                  <div className="tc-num-val" style={{ color: c.profit >= 0 ? "var(--teal)" : "var(--red)" }}>{fmt(c.profit)}</div>
+                                </div>
+                              </div>
+                              {c.pending > 0 && (
+                                <div style={{ marginTop: 8, fontSize: 11, color: "var(--red)" }}>⚠ {fmt(c.pending)} pending</div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </>
                   );
