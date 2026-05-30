@@ -506,12 +506,13 @@ function useStore() {
       const { error } = await supabase
         .from('trips')
         .update({ edited_profit: newProfit })
-        .eq('id', tripId);
+        .eq('id', tripId)
+        .select();
       if (error) throw error;
       setTrips(p => p.map(t => t.id === tripId ? { ...t, editedProfit: newProfit } : t));
     } catch (error) {
       console.error('Error updating trip profit:', error);
-      alert('Failed to update profit');
+      alert('Failed to update profit: ' + (error?.message || JSON.stringify(error)));
       throw error;
     }
   };
@@ -521,12 +522,13 @@ function useStore() {
       const { error } = await supabase
         .from('trips')
         .update({ client_paid: amount })
-        .eq('id', tripId);
+        .eq('id', tripId)
+        .select();
       if (error) throw error;
       setTrips(p => p.map(t => t.id === tripId ? { ...t, clientPaid: amount } : t));
     } catch (error) {
       console.error('Error updating client paid:', error);
-      alert('Failed to update payment');
+      alert('Failed to update payment: ' + (error?.message || JSON.stringify(error)));
       throw error;
     }
   };
