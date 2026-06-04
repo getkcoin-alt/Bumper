@@ -46,6 +46,7 @@ export const dbToApp = {
     firmId: db.firm_id,
     clientName: db.client_name,
     partnerId: db.partner_id,
+    driverId: db.driver_id || null,
     driverName: db.driver_name,
     vehicleId: db.vehicle_id,
     place: db.place,
@@ -58,6 +59,27 @@ export const dbToApp = {
     editedProfit: db.edited_profit !== null && db.edited_profit !== undefined ? Number(db.edited_profit) : undefined,
     clientPaid: Number(db.client_paid || 0),
     locked: db.locked,
+    createdAt: db.created_at,
+  }),
+
+  driver: (db) => ({
+    id: db.id,
+    firmId: db.firm_id,
+    name: db.name,
+    mobile: db.mobile || '',
+    salaryType: db.salary_type,
+    salaryAmount: Number(db.salary_amount || 0),
+    createdAt: db.created_at,
+  }),
+
+  driverPayment: (db) => ({
+    id: db.id,
+    driverId: db.driver_id,
+    firmId: db.firm_id,
+    amount: Number(db.amount),
+    note: db.note || '',
+    date: db.date,
+    month: db.month,
     createdAt: db.created_at,
   }),
 };
@@ -96,6 +118,7 @@ export const appToDb = {
     firm_id: app.firmId,
     client_name: app.clientName,
     partner_id: app.partnerId,
+    driver_id: app.driverId || null,
     driver_name: app.driverName,
     vehicle_id: app.vehicleId,
     place: app.place,
@@ -107,6 +130,23 @@ export const appToDb = {
     expenses: app.expenses || {},
     client_paid: app.clientPaid || 0,
     locked: app.locked !== undefined ? app.locked : true,
+  }),
+
+  driver: (app) => ({
+    firm_id: app.firmId,
+    name: app.name,
+    mobile: app.mobile || '',
+    salary_type: app.salaryType || 'per_trip',
+    salary_amount: app.salaryAmount || 0,
+  }),
+
+  driverPayment: (app) => ({
+    driver_id: app.driverId,
+    firm_id: app.firmId,
+    amount: app.amount,
+    note: app.note || '',
+    date: app.date,
+    month: app.month,
   }),
 };
 
