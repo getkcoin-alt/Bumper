@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "../utils/supabase";
 import { dbToApp, appToDb } from "../utils/dataConverter";
 
@@ -47,7 +47,7 @@ h1,h2,h3,h4{font-family:'Syne',sans-serif;font-weight:700}
 ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
 
 /* layout */
-.app{display:flex;height:100vh;overflow:hidden}
+.app{display:flex;height:100dvh;overflow:hidden}
 .sidebar{width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
 .main{flex:1;overflow-y:auto;background:var(--bg)}
 
@@ -135,8 +135,9 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 
 /* forms */
 .form-grid{display:grid;gap:14px}
-.fg2{grid-template-columns:1fr 1fr}
-.fg3{grid-template-columns:1fr 1fr 1fr}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.veh-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
 label{font-size:12px;color:var(--text3);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
 input,select,textarea{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13.5px;font-family:'DM Sans',sans-serif;outline:none;transition:border .15s}
 input:focus,select:focus,textarea:focus{border-color:var(--accent)}
@@ -154,22 +155,62 @@ select option{background:var(--bg3)}
 .close-btn:hover{color:var(--text)}
 
 /* login */
-.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}
-.login-card{width:100%;max-width:700px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;box-shadow:var(--shadow)}
-.login-logo{text-align:center;margin-bottom:32px}
-.login-logo .icon{width:56px;height:56px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
-.login-logo .icon svg{width:32px;height:32px;fill:#0d1117}
-.login-logo h1{font-size:24px;letter-spacing:-.6px;font-weight:700}
-.login-logo p{font-size:13px;color:var(--text3);margin-top:6px}
-.login-admin-btn{width:100%;padding:16px;background:linear-gradient(135deg, var(--accent-dim) 0%, var(--bg3) 100%);border:2px solid var(--accent);border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;margin-bottom:24px;font-family:'DM Sans',sans-serif}
-.login-admin-btn:hover{background:var(--accent);border-color:var(--accent2);transform:translateY(-2px);box-shadow:0 4px 16px var(--accent-dim)}
-.login-admin-btn .icon-wrap{width:40px;height:40px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0d1117}
-.login-admin-btn:hover .icon-wrap{background:#0d1117;color:var(--accent)}
-.login-admin-btn .text-wrap{text-align:left}
-.login-admin-btn .text-wrap .title{font-size:16px;font-weight:700;color:var(--accent);font-family:'Syne',sans-serif}
-.login-admin-btn:hover .text-wrap .title{color:#0d1117}
-.login-admin-btn .text-wrap .subtitle{font-size:12px;color:var(--text3);margin-top:2px}
-.login-admin-btn:hover .text-wrap .subtitle{color:#0d1117;opacity:0.7}
+.login-page{min-height:100vh;display:flex;background:var(--bg)}
+.login-brand{width:360px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:48px 36px;position:relative;overflow:hidden}
+.login-brand::before{content:'';position:absolute;top:-60px;right:-60px;width:220px;height:220px;border-radius:50%;background:var(--accent);opacity:.04;pointer-events:none}
+.login-brand::after{content:'';position:absolute;bottom:-40px;left:-40px;width:160px;height:160px;border-radius:50%;background:var(--teal);opacity:.04;pointer-events:none}
+.lb-logo{display:flex;align-items:center;gap:12px;margin-bottom:52px}
+.lb-logo-icon{width:40px;height:40px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#0d1117;flex-shrink:0}
+.lb-logo-icon svg{width:22px;height:22px}
+.lb-logo h2{font-size:18px;font-family:'Syne',sans-serif;font-weight:700;color:var(--text);letter-spacing:-.3px}
+.lb-logo p{font-size:10px;color:var(--text3);margin-top:1px}
+.lb-tagline{font-size:26px;font-family:'Syne',sans-serif;font-weight:800;color:var(--text);letter-spacing:-.8px;line-height:1.25;margin-bottom:10px}
+.lb-tagline span{color:var(--accent)}
+.lb-sub{font-size:12.5px;color:var(--text3);margin-bottom:44px;line-height:1.7}
+.lb-features{display:flex;flex-direction:column;gap:18px;margin-top:auto}
+.lb-feat{display:flex;align-items:center;gap:12px}
+.lb-feat-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lb-feat-icon svg{width:15px;height:15px}
+.lb-feat-title{font-size:12px;font-weight:600;color:var(--text);font-family:'Syne',sans-serif}
+.lb-feat-sub{font-size:10.5px;color:var(--text3);margin-top:1px}
+.login-panel{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 48px;overflow-y:auto}
+.login-panel-inner{width:100%;max-width:420px}
+.lp-heading{font-size:22px;font-family:'Syne',sans-serif;font-weight:700;color:var(--text);margin-bottom:6px}
+.lp-sub{font-size:13px;color:var(--text3);margin-bottom:28px}
+.lp-admin{width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:var(--radius);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;margin-bottom:6px}
+.lp-admin:hover{background:var(--accent);transform:translateY(-1px);box-shadow:0 4px 16px var(--accent-dim)}
+.lp-admin-icon{width:34px;height:34px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#0d1117;flex-shrink:0;transition:all .2s}
+.lp-admin:hover .lp-admin-icon{background:#0d1117;color:var(--accent)}
+.lp-admin-text .t{font-size:14px;font-weight:700;color:var(--accent);font-family:'Syne',sans-serif;transition:color .2s}
+.lp-admin:hover .lp-admin-text .t{color:#0d1117}
+.lp-admin-text .s{font-size:11px;color:var(--text3);margin-top:1px;transition:color .2s}
+.lp-admin:hover .lp-admin-text .s{color:#0d1117;opacity:.7}
+.lp-admin-arrow{margin-left:auto;font-size:18px;color:var(--accent);opacity:.5;transition:opacity .2s}
+.lp-admin:hover .lp-admin-arrow{opacity:1;color:#0d1117}
+.lp-divider{display:flex;align-items:center;gap:10px;margin:20px 0 16px}
+.lp-divider hr{flex:1;border:none;border-top:1px solid var(--border);margin:0}
+.lp-divider span{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);white-space:nowrap}
+.lp-partners{display:flex;flex-direction:column;gap:7px;max-height:340px;overflow-y:auto;padding-right:2px}
+.lp-partners::-webkit-scrollbar{width:4px}
+.lp-partners::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.lp-card{width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all .15s;text-align:left;font-family:'DM Sans',sans-serif}
+.lp-card:hover{background:var(--bg3);border-color:var(--border2);transform:translateX(3px)}
+.lp-avatar{width:36px;height:36px;background:var(--bg3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-family:'Syne',sans-serif;font-weight:700;color:var(--accent);flex-shrink:0;border:1px solid var(--border)}
+.lp-card:hover .lp-avatar{border-color:var(--accent);background:var(--accent-dim)}
+.lp-name{font-size:13px;font-weight:600;color:var(--text)}
+.lp-meta{font-size:11px;color:var(--text3);margin-top:1px;display:flex;align-items:center;gap:6px}
+.lp-firm-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:.6;display:inline-block}
+.lp-mobile-hint{font-size:11px;color:var(--text3);margin-left:auto;font-variant-numeric:tabular-nums}
+.lp-arrow{font-size:16px;color:var(--text3);margin-left:6px;transition:color .15s}
+.lp-card:hover .lp-arrow{color:var(--accent)}
+@media(max-width:768px){
+  .login-page{flex-direction:column}
+  .login-brand{width:100%;padding:24px 20px;border-right:none;border-bottom:1px solid var(--border)}
+  .lb-tagline{font-size:20px}
+  .lb-sub,.lb-features{display:none}
+  .lb-logo{margin-bottom:0}
+  .login-panel{padding:24px 20px;align-items:flex-start}
+}
 
 /* divider */
 .divider{border:none;border-top:1px solid var(--border);margin:16px 0}
@@ -201,11 +242,20 @@ select option{background:var(--bg3)}
   .logout-btn{padding:8px 12px;font-size:11px;white-space:nowrap}
   .main{overflow-y:auto}
   .g2,.g3,.g4{grid-template-columns:1fr}
-  .fg2,.fg3{grid-template-columns:1fr}
-  .topbar{padding:14px 16px 0}
+  .fg2,.fg3{grid-template-columns:1fr;gap:10px}
+  .veh-row{grid-template-columns:1fr 1fr}
+  .topbar{padding:14px 16px 0;flex-wrap:wrap;gap:10px}
+  .page-title{font-size:18px}
+  .stat-value{font-size:22px;letter-spacing:-.5px}
   .content{padding:14px 16px 40px}
   .filter-bar{flex-wrap:wrap}
   .filter-bar input,.filter-bar select{min-width:100px;max-width:none;flex:1}
+  .overlay{padding:0;align-items:flex-end}
+  .modal{max-width:100%;border-radius:var(--radius-lg) var(--radius-lg) 0 0;max-height:92dvh}
+  .modal-header{padding:14px 18px 12px}
+  .modal-body{padding:14px 18px}
+  .modal-footer{padding:10px 18px}
+  .card{padding:14px}
 }
 
 /* filter bar */
@@ -213,7 +263,22 @@ select option{background:var(--bg3)}
 .filter-bar input,.filter-bar select{width:auto;min-width:120px;max-width:180px;padding:7px 10px;font-size:12px}
 .filter-count{font-size:11px;color:var(--text3)}
 
-/* emi */
+/* trip cards (mobile) */
+.trip-cards{display:none;flex-direction:column;gap:10px}
+.trip-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;cursor:pointer;transition:border-color .15s}
+.trip-card:active{border-color:var(--border2)}
+.tc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.tc-date{font-size:11px;color:var(--text3)}
+.tc-client{font-size:16px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text);margin-bottom:3px}
+.tc-meta{font-size:11px;color:var(--text3);margin-bottom:10px}
+.tc-nums{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tc-num{background:var(--bg2);border-radius:8px;padding:8px 10px}
+.tc-num-label{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:2px}
+.tc-num-val{font-size:15px;font-weight:700;font-family:'Syne',sans-serif}
+@media(max-width:768px){
+  .trip-table{display:none}
+  .trip-cards{display:flex}
+}
 .emi-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
 .emi-active{background:var(--blue-dim);color:var(--blue)}
 .emi-done{background:var(--teal-dim);color:var(--teal)}
@@ -236,6 +301,7 @@ const Icon = {
   wallet: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>,
   arrowUp: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>,
   arrowDown: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>,
+  driver: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><path d="M16 3.5a4 4 0 010 9"/><path d="M20 19c0-3-1.8-5.5-4-6.5"/></svg>,
 };
 
 // ── App State ─────────────────────────────────────────────────────────────────
@@ -246,6 +312,8 @@ function useStore() {
   const [expenses, setExpenses] = useState([]);
   const [trips, setTrips] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [driverPayments, setDriverPayments] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -317,6 +385,18 @@ function useStore() {
         paymentMethod: tx.payment_method,
       })));
 
+      // Load drivers
+      const { data: driversData, error: driversError } = await supabase
+        .from('drivers').select('*').order('created_at', { ascending: false });
+      if (driversError) throw driversError;
+      setDrivers((driversData || []).map(dbToApp.driver));
+
+      // Load driver payments
+      const { data: driverPaymentsData, error: driverPaymentsError } = await supabase
+        .from('driver_payments').select('*').order('date', { ascending: false });
+      if (driverPaymentsError) throw driverPaymentsError;
+      setDriverPayments((driverPaymentsData || []).map(dbToApp.driverPayment));
+
     } catch (error) {
       console.error('Error loading data:', error);
       alert('Failed to load data from database. Check console for details.');
@@ -330,6 +410,8 @@ function useStore() {
   const firmExpenses = (firmId) => expenses.filter(e => e.firmId === firmId);
   const firmTrips = (firmId) => trips.filter(t => t.firmId === firmId);
   const firmTransactions = (firmId) => transactions.filter(tx => tx.firmId === firmId);
+  const firmDrivers = (firmId) => drivers.filter(d => d.firmId === firmId);
+  const firmDriverPayments = (driverId) => driverPayments.filter(p => p.driverId === driverId);
 
   const addFirm = async (name) => {
     try {
@@ -384,6 +466,24 @@ function useStore() {
     }
   };
 
+  const updateVehicle = async (id, data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('vehicles')
+        .update(appToDb.vehicle(data))
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      const updated = dbToApp.vehicle(dbData);
+      setVehicles(p => p.map(v => v.id === id ? updated : v));
+    } catch (error) {
+      console.error('Error updating vehicle:', error);
+      alert('Failed to update vehicle');
+      throw error;
+    }
+  };
+
   const addExpense = async (data) => {
     try {
       const { data: dbData, error } = await supabase
@@ -423,12 +523,13 @@ function useStore() {
       const { error } = await supabase
         .from('trips')
         .update({ edited_profit: newProfit })
-        .eq('id', tripId);
+        .eq('id', tripId)
+        .select();
       if (error) throw error;
       setTrips(p => p.map(t => t.id === tripId ? { ...t, editedProfit: newProfit } : t));
     } catch (error) {
       console.error('Error updating trip profit:', error);
-      alert('Failed to update profit');
+      alert('Failed to update profit: ' + (error?.message || JSON.stringify(error)));
       throw error;
     }
   };
@@ -438,12 +539,13 @@ function useStore() {
       const { error } = await supabase
         .from('trips')
         .update({ client_paid: amount })
-        .eq('id', tripId);
+        .eq('id', tripId)
+        .select();
       if (error) throw error;
       setTrips(p => p.map(t => t.id === tripId ? { ...t, clientPaid: amount } : t));
     } catch (error) {
       console.error('Error updating client paid:', error);
-      alert('Failed to update payment');
+      alert('Failed to update payment: ' + (error?.message || JSON.stringify(error)));
       throw error;
     }
   };
@@ -482,6 +584,42 @@ function useStore() {
     } catch (error) {
       console.error('Error adding transaction:', error);
       alert('Failed to add transaction');
+      throw error;
+    }
+  };
+
+  const addDriver = async (data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('drivers')
+        .insert([appToDb.driver(data)])
+        .select()
+        .single();
+      if (error) throw error;
+      const newDriver = dbToApp.driver(dbData);
+      setDrivers(p => [newDriver, ...p]);
+      return newDriver;
+    } catch (error) {
+      console.error('Error adding driver:', error);
+      alert('Failed to add driver');
+      throw error;
+    }
+  };
+
+  const addDriverPayment = async (data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('driver_payments')
+        .insert([appToDb.driverPayment(data)])
+        .select()
+        .single();
+      if (error) throw error;
+      const newPayment = dbToApp.driverPayment(dbData);
+      setDriverPayments(p => [newPayment, ...p]);
+      return newPayment;
+    } catch (error) {
+      console.error('Error adding driver payment:', error);
+      alert('Failed to record payment');
       throw error;
     }
   };
@@ -540,12 +678,32 @@ function useStore() {
     };
   };
 
-  return {
-    firms, users, vehicles, expenses, trips, transactions, currentUser, setCurrentUser, loading,
+  const resetAllData = async () => {
+    try {
+      await supabase.from('trips').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('vehicles').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('driver_payments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('drivers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('users').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('firms').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      setFirms([]); setUsers([]); setVehicles([]);
+      setExpenses([]); setTrips([]); setTransactions([]);
+      setDrivers([]); setDriverPayments([]);
+    } catch (error) {
+      console.error('Error resetting data:', error);
+      alert('Failed to reset data: ' + error.message);
+      throw error;
+    }
+  };
 
-    firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions,
-    addFirm, addUser, addVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction,
-    calcTrip, firmSummary,
+  return {
+    firms, users, vehicles, expenses, trips, transactions, drivers, driverPayments, currentUser, setCurrentUser, loading,
+
+    firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions, firmDrivers, firmDriverPayments,
+    addFirm, addUser, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction, addDriver, addDriverPayment,
+    calcTrip, firmSummary, resetAllData,
   };
 }
 
@@ -579,74 +737,100 @@ function calcEmi(v) {
 // ── Login Screen ──────────────────────────────────────────────────────────────
 function LoginScreen({ users, firms, onLogin }) {
   const [firmFilter, setFirmFilter] = useState("all");
-
   const visible = firmFilter === "all" ? users : users.filter(u => u.firmId === firmFilter);
 
   return (
-    <div className="login-wrap">
-      <div className="login-card">
-        <div className="login-logo">
-          <div className="icon">{Icon.truck}</div>
-          <h1>DumperTrack</h1>
-          <p>Dumper Trip & Finance Management</p>
-        </div>
+    <div className="login-page">
+      <style>{style}</style>
 
-        <button className="login-admin-btn" onClick={() => onLogin({ id: "admin", name: "Admin", role: "admin" })}>
-          <div className="icon-wrap">{Icon.admin}</div>
-          <div className="text-wrap">
-            <div className="title">Admin Panel</div>
-            <div className="subtitle">Manage firms & partners</div>
+      {/* ── Left brand panel ── */}
+      <div className="login-brand">
+        <div className="lb-logo">
+          <div className="lb-logo-icon">{Icon.truck}</div>
+          <div>
+            <h2>DumperTrack</h2>
+            <p>Fleet & Finance Management</p>
           </div>
-        </button>
-
-        <div style={{ marginBottom: 12 }}>
-          <label>Filter by Firm</label>
-          <select value={firmFilter} onChange={e => setFirmFilter(e.target.value)}>
-            <option value="all">All firms</option>
-            {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
         </div>
 
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Partner Name</th>
-                  <th>Firm</th>
-                  <th>Mobile</th>
-                  <th style={{ textAlign: 'center' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.length === 0 && (
-                  <tr>
-                    <td colSpan={5}>
-                      <div className="empty" style={{ padding: '24px' }}>
-                        <p>No partners available. Admin can add partners from Admin Panel.</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-                {visible.map((u, i) => {
-                  const firm = firms.find(f => f.id === u.firmId);
-                  return (
-                    <tr key={u.id}>
-                      <td className="td-bold">{i + 1}</td>
-                      <td className="td-bold">{u.name}</td>
-                      <td><span className="badge badge-accent">{firm?.name}</span></td>
-                      <td>{u.mobile}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button className="btn btn-primary btn-sm" onClick={() => onLogin(u)}>
-                          Login
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <div className="lb-tagline">Every trip.<br />Every rupee.<br /><span>Always in control.</span></div>
+        <p className="lb-sub">
+          One app to manage trips, expenses, vehicles,<br />
+          EMI loans, and partner finances — all in real time.
+        </p>
+
+        <div className="lb-features">
+          {[
+            { icon: Icon.trips,   bg: "var(--accent-dim)",  color: "var(--accent)",  title: "Trip Management",    sub: "Log & lock every trip entry" },
+            { icon: Icon.balance, bg: "var(--teal-dim)",    color: "var(--teal)",    title: "Financial Reports",  sub: "Income, expenses & profit" },
+            { icon: Icon.vehicle, bg: "var(--blue-dim)",    color: "var(--blue)",    title: "Fleet & EMI",        sub: "Vehicles, loans & EMI tracking" },
+            { icon: Icon.wallet,  bg: "var(--purple-dim)",  color: "var(--purple)",  title: "Credit & Debit",     sub: "Full transaction history" },
+          ].map(f => (
+            <div key={f.title} className="lb-feat">
+              <div className="lb-feat-icon" style={{ background: f.bg, color: f.color }}>{f.icon}</div>
+              <div>
+                <div className="lb-feat-title">{f.title}</div>
+                <div className="lb-feat-sub">{f.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Right login panel ── */}
+      <div className="login-panel">
+        <div className="login-panel-inner">
+          <div className="lp-heading">Welcome back</div>
+          <div className="lp-sub">Select your profile to continue</div>
+
+          {/* Admin access */}
+          <button className="lp-admin" onClick={() => onLogin({ id: "admin", name: "Admin", role: "admin" })}>
+            <div className="lp-admin-icon">{Icon.admin}</div>
+            <div className="lp-admin-text">
+              <div className="t">Admin Panel</div>
+              <div className="s">Manage firms & partners</div>
+            </div>
+            <div className="lp-admin-arrow">›</div>
+          </button>
+
+          <div className="lp-divider">
+            <hr /><span>Partners</span><hr />
+          </div>
+
+          {/* Firm filter — only shown when multiple firms exist */}
+          {firms.length > 1 && (
+            <div style={{ marginBottom: 12 }}>
+              <select value={firmFilter} onChange={e => setFirmFilter(e.target.value)} style={{ width: "100%", fontSize: 12 }}>
+                <option value="all">All Firms</option>
+                {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Partner cards */}
+          <div className="lp-partners">
+            {visible.length === 0 && (
+              <div className="empty" style={{ padding: "28px 0" }}>
+                <p>No partners yet. Use Admin Panel to add partners.</p>
+              </div>
+            )}
+            {visible.map(u => {
+              const firm = firms.find(f => f.id === u.firmId);
+              return (
+                <button key={u.id} className="lp-card" onClick={() => onLogin(u)}>
+                  <div className="lp-avatar">{u.name[0].toUpperCase()}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="lp-name">{u.name}</div>
+                    <div className="lp-meta">
+                      <span className="lp-firm-dot" />
+                      <span>{firm?.name}</span>
+                    </div>
+                  </div>
+                  {u.mobile && <div className="lp-mobile-hint">{u.mobile}</div>}
+                  <div className="lp-arrow">›</div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -659,6 +843,19 @@ function AdminPanel({ store }) {
   const [tab, setTab] = useState("firms");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetting, setResetting] = useState(false);
+
+  const handleReset = async () => {
+    if (resetConfirm !== "RESET") return;
+    setResetting(true);
+    try {
+      await store.resetAllData();
+      setModal(null); setResetConfirm("");
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const navItems = [
     { id: "firms", label: "Firms", icon: Icon.firms },
@@ -693,6 +890,9 @@ function AdminPanel({ store }) {
           </button>
         ))}
         <div className="sidebar-footer">
+          <button className="btn btn-danger btn-sm" style={{ width: "100%", marginBottom: 8, justifyContent: "center" }} onClick={() => { setModal("reset"); setResetConfirm(""); }}>
+            ⚠ Reset All Data
+          </button>
           <button className="logout-btn" onClick={() => store.setCurrentUser(null)}>
             {Icon.logout} Sign out
           </button>
@@ -780,6 +980,31 @@ function AdminPanel({ store }) {
           </div>
         </Modal>
       )}
+
+      {modal === "reset" && (
+        <Modal title="Reset All Data" onClose={() => { setModal(null); setResetConfirm(""); }}
+          footer={
+            <>
+              <button className="btn btn-outline" onClick={() => { setModal(null); setResetConfirm(""); }}>Cancel</button>
+              <button className="btn btn-danger" onClick={handleReset} disabled={resetConfirm !== "RESET" || resetting}>
+                {resetting ? "Deleting…" : "Delete Everything"}
+              </button>
+            </>
+          }>
+          <div className="form-grid">
+            <div style={{ background: "var(--red-dim)", border: "1px solid var(--red)", borderRadius: "var(--radius)", padding: 14, fontSize: 13 }}>
+              <div style={{ fontWeight: 600, color: "var(--red)", marginBottom: 6 }}>⚠ This cannot be undone</div>
+              <div style={{ color: "var(--text2)", lineHeight: 1.6 }}>
+                All trips, transactions, expenses, vehicles, partners, and firms will be permanently deleted for all users.
+              </div>
+            </div>
+            <div>
+              <label>Type <strong style={{ color: "var(--red)", fontFamily: "monospace" }}>RESET</strong> to confirm</label>
+              <input placeholder="RESET" value={resetConfirm} onChange={e => setResetConfirm(e.target.value)} style={{ borderColor: resetConfirm === "RESET" ? "var(--red)" : "" }} />
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -790,6 +1015,7 @@ function UserPanel({ store, user }) {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [tripDetail, setTripDetail] = useState(null);
+  const [driverDetail, setDriverDetail] = useState(null);
   const [editingProfit, setEditingProfit] = useState(false);
   const [editedProfitValue, setEditedProfitValue] = useState("");
   const [editingClientPaid, setEditingClientPaid] = useState(false);
@@ -797,6 +1023,9 @@ function UserPanel({ store, user }) {
   const [tripFilter, setTripFilter] = useState({ client: "", partner: "", vehicle: "", dateFrom: "", dateTo: "" });
   const [txFilter, setTxFilter] = useState({ type: "all", partner: "", dateFrom: "", dateTo: "" });
   const [vehFilter, setVehFilter] = useState({ type: "all", emi: "all" });
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const swipeLocked = useRef(false);
 
   const firm = store.firms.find(f => f.id === user.firmId);
   const partners = store.firmUsers(user.firmId);
@@ -804,6 +1033,7 @@ function UserPanel({ store, user }) {
   const expenses = store.firmExpenses(user.firmId);
   const trips = store.firmTrips(user.firmId);
   const transactions = store.firmTransactions(user.firmId);
+  const drivers = store.firmDrivers(user.firmId);
   const summary = store.firmSummary(user.firmId);
 
   const navItems = [
@@ -812,9 +1042,41 @@ function UserPanel({ store, user }) {
     { id: "transactions", label: "Credit/Debit", icon: Icon.wallet },
     { id: "expenses", label: "Expenses", icon: Icon.expense },
     { id: "vehicles", label: "Vehicles", icon: Icon.vehicle },
+    { id: "drivers", label: "Drivers", icon: Icon.driver },
     { id: "partners", label: "Partners", icon: Icon.people },
     { id: "balance", label: "Balance", icon: Icon.balance },
   ];
+
+  const tabIds = navItems.map(n => n.id);
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    // Lock if the finger starts inside any horizontally-scrollable element
+    let el = e.target;
+    while (el && el !== e.currentTarget) {
+      if (el.scrollWidth > el.clientWidth + 2) { swipeLocked.current = true; return; }
+      el = el.parentElement;
+    }
+    swipeLocked.current = false;
+  };
+
+  const handleTouchMove = (e) => {
+    if (swipeLocked.current) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartX.current);
+    const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
+    if (dy > 8 && dy >= dx) swipeLocked.current = true;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (swipeLocked.current) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const idx = tabIds.indexOf(tab);
+    if (dx < 0 && idx < tabIds.length - 1) setTab(tabIds[idx + 1]);
+    if (dx > 0 && idx > 0) setTab(tabIds[idx - 1]);
+  };
 
   // Trip form auto-calculation
   const tripIncome = (form.ratePerTrip || 0) * (form.tripCount || 0);
@@ -826,11 +1088,15 @@ function UserPanel({ store, user }) {
   const tripProfit = tripIncome - tripExpenses;
 
   const submitTrip = () => {
+    const selectedDriver = drivers.find(d => d.id === form.driverId);
+    const resolvedDriverName = selectedDriver ? selectedDriver.name : (form.driverName?.trim() || "");
+    const resolvedDriverId = selectedDriver ? selectedDriver.id : null;
+
     if (
       !form.clientName?.trim() ||
       !form.partnerId ||
       !form.vehicleId ||
-      !form.driverName?.trim() ||
+      !resolvedDriverName ||
       !form.place?.trim() ||
       !form.item ||
       !form.tripCount ||
@@ -849,7 +1115,8 @@ function UserPanel({ store, user }) {
       firmId: user.firmId,
       clientName: form.clientName,
       partnerId: form.partnerId,
-      driverName: form.driverName,
+      driverId: resolvedDriverId,
+      driverName: resolvedDriverName,
       vehicleId: form.vehicleId,
       place: form.place,
       item: form.item,
@@ -863,9 +1130,21 @@ function UserPanel({ store, user }) {
     setForm({});
   };
 
-  const submitVehicle = () => {
-    if (!form.number?.trim()) return;
-    store.addVehicle({
+  const submitVehicle = async () => {
+    const rows = (form.vehicleRows || []).filter(r => r.number?.trim());
+    if (!rows.length) return;
+    await Promise.all(rows.map(r => store.addVehicle({
+      firmId: user.firmId,
+      number: r.number.trim(),
+      type: r.type || "Dumper",
+      emiAmount: 0, emiStartDate: null, emiTenureMonths: 0, emiDescription: "",
+    })));
+    setModal(null); setForm({});
+  };
+
+  const submitEditVehicle = async () => {
+    if (!form.id || !form.number?.trim()) return;
+    await store.updateVehicle(form.id, {
       firmId: user.firmId,
       number: form.number.trim(),
       type: form.type || "Dumper",
@@ -877,12 +1156,11 @@ function UserPanel({ store, user }) {
     setModal(null); setForm({});
   };
 
-  const submitExpense = () => {
-    if (!form.label?.trim()) return;
-    // Store only label; amounts are entered per trip.
-    store.addExpense({ firmId: user.firmId, label: form.label.trim(), amount: 0, perTrip: true });
-    setModal(null);
-    setForm({});
+  const submitExpense = async () => {
+    const rows = (form.expenseRows || []).filter(r => r.label?.trim());
+    if (!rows.length) return;
+    await Promise.all(rows.map(r => store.addExpense({ firmId: user.firmId, label: r.label.trim(), amount: 0, perTrip: true })));
+    setModal(null); setForm({});
   };
 
   const submitTransaction = () => {
@@ -899,6 +1177,36 @@ function UserPanel({ store, user }) {
       date: form.date,
       referenceNumber: form.referenceNumber?.trim() || "",
       paymentMethod: form.paymentMethod || "",
+    });
+    setModal(null);
+    setForm({});
+  };
+
+  const submitDriver = async () => {
+    if (!form.name?.trim()) return alert("Driver name is required.");
+    await store.addDriver({
+      firmId: user.firmId,
+      name: form.name.trim(),
+      mobile: form.mobile?.trim() || "",
+      salaryType: form.salaryType || "per_trip",
+      salaryAmount: Number(form.salaryAmount) || 0,
+    });
+    setModal(null);
+    setForm({});
+  };
+
+  const submitDriverPayment = async () => {
+    if (!form.amount || Number(form.amount) <= 0) return alert("Enter a valid payment amount.");
+    if (!form.driverPaymentId) return;
+    const date = form.date || today();
+    const month = date.slice(0, 7);
+    await store.addDriverPayment({
+      driverId: form.driverPaymentId,
+      firmId: user.firmId,
+      amount: Number(form.amount),
+      note: form.note?.trim() || "",
+      date,
+      month,
     });
     setModal(null);
     setForm({});
@@ -933,7 +1241,7 @@ function UserPanel({ store, user }) {
         </div>
       </div>
 
-      <div className="main">
+      <div className="main" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
         {/* ── DASHBOARD ── */}
         {tab === "dashboard" && (
           <>
@@ -1145,7 +1453,9 @@ function UserPanel({ store, user }) {
                   return (
                     <>
                       <div className="filter-count" style={{ marginBottom: 10 }}>Showing {filtered.length} of {trips.length} entries</div>
-                      <div className="table-wrap">
+
+                      {/* ── Desktop table ── */}
+                      <div className="trip-table table-wrap">
                         <table>
                           <thead><tr><th>Date</th><th>Client</th><th>Place</th><th>Item</th><th>Driver</th><th>Vehicle</th><th>Trips</th><th>Rate</th><th>Income</th><th>Received</th><th>Pending</th><th>Expenses</th><th>Profit</th><th>Partner</th><th></th></tr></thead>
                           <tbody>
@@ -1180,6 +1490,42 @@ function UserPanel({ store, user }) {
                             })}
                           </tbody>
                         </table>
+                      </div>
+
+                      {/* ── Mobile cards ── */}
+                      <div className="trip-cards">
+                        {filtered.length === 0 && <div className="empty"><p>No trips match the filter.</p></div>}
+                        {filtered.map(t => {
+                          const c = store.calcTrip(t);
+                          const veh = vehicles.find(v => v.id === t.vehicleId);
+                          const by = partners.find(p => p.id === t.partnerId);
+                          return (
+                            <div key={t.id} className="trip-card" onClick={() => setTripDetail(t)}>
+                              <div className="tc-top">
+                                <span className="tc-date">{t.date}</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <span className="badge badge-purple">{t.item}</span>
+                                  <span style={{ fontSize: 11, color: "var(--text3)" }}>{t.tripCount} trips</span>
+                                </div>
+                              </div>
+                              <div className="tc-client">{t.clientName}</div>
+                              <div className="tc-meta">{t.place}{veh ? ` · ${veh.number}` : ""}{by ? ` · ${by.name.split(" ")[0]}` : ""}</div>
+                              <div className="tc-nums">
+                                <div className="tc-num">
+                                  <div className="tc-num-label">Income</div>
+                                  <div className="tc-num-val" style={{ color: "var(--accent)" }}>{fmt(c.income)}</div>
+                                </div>
+                                <div className="tc-num">
+                                  <div className="tc-num-label">Profit</div>
+                                  <div className="tc-num-val" style={{ color: c.profit >= 0 ? "var(--teal)" : "var(--red)" }}>{fmt(c.profit)}</div>
+                                </div>
+                              </div>
+                              {c.pending > 0 && (
+                                <div style={{ marginTop: 8, fontSize: 11, color: "var(--red)" }}>⚠ {fmt(c.pending)} pending</div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </>
                   );
@@ -1329,7 +1675,7 @@ function UserPanel({ store, user }) {
                 <h1 className="page-title">Expense Types</h1>
                 <p className="page-sub">Auto-applied to every trip for calculation</p>
               </div>
-              <button className="btn btn-primary" onClick={() => { setModal("expense"); setForm({ perTrip: "true" }); }}>
+              <button className="btn btn-primary" onClick={() => { setModal("expense"); setForm({ expenseRows: [{ label: "" }] }); }}>
                 {Icon.plus} Add Expense
               </button>
             </div>
@@ -1361,7 +1707,7 @@ function UserPanel({ store, user }) {
                 <h1 className="page-title">Vehicles</h1>
                 <p className="page-sub">{vehicles.length} registered vehicles</p>
               </div>
-              <button className="btn btn-primary" onClick={() => { setModal("vehicle"); setForm({ type: "Dumper" }); }}>
+              <button className="btn btn-primary" onClick={() => { setModal("vehicle"); setForm({ vehicleRows: [{ number: "", type: "Dumper" }] }); }}>
                 {Icon.plus} Add Vehicle
               </button>
             </div>
@@ -1423,15 +1769,18 @@ function UserPanel({ store, user }) {
                       const emi = calcEmi(v);
                       return (
                         <div key={v.id} className="card">
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <div style={{ width: 36, height: 36, background: "var(--accent-dim)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}>{Icon.vehicle}</div>
+                              <div style={{ width: 36, height: 36, background: "var(--accent-dim)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)", flexShrink: 0 }}>{Icon.vehicle}</div>
                               <div>
                                 <div style={{ fontWeight: 600, fontFamily: "Syne", fontSize: 14 }}>{v.number}</div>
                                 <div style={{ fontSize: 11, color: "var(--text3)" }}>{v.type}</div>
                               </div>
                             </div>
-                            {emi && <span className={`emi-tag ${emi.done ? "emi-done" : "emi-active"}`}>{emi.done ? "EMI Done" : "EMI Active"}</span>}
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                              {emi && <span className={`emi-tag ${emi.done ? "emi-done" : "emi-active"}`}>{emi.done ? "EMI Done" : "EMI Active"}</span>}
+                              <button className="btn btn-outline btn-sm" onClick={() => { setModal("editVehicle"); setForm({ id: v.id, number: v.number, type: v.type, emiAmount: v.emiAmount || "", emiStartDate: v.emiStartDate || "", emiTenureMonths: v.emiTenureMonths || "", emiDescription: v.emiDescription || "" }); }}>✎ Edit</button>
+                            </div>
                           </div>
                           <div style={{ display: "grid", gap: 6, fontSize: 12 }}>
                             <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -1453,6 +1802,9 @@ function UserPanel({ store, user }) {
                             {emi && emi.done && (
                               <div style={{ color: "var(--teal)", fontSize: 11 }}>Loan fully paid</div>
                             )}
+                            {!emi && (
+                              <div style={{ color: "var(--text3)", fontSize: 11 }}>No EMI set · <button onClick={() => { setModal("editVehicle"); setForm({ id: v.id, number: v.number, type: v.type, emiAmount: "", emiStartDate: "", emiTenureMonths: "", emiDescription: "" }); }} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 11, padding: 0 }}>Set EMI</button></div>
+                            )}
                             {v.emiDescription && (
                               <div style={{ color: "var(--text3)", fontSize: 11, marginTop: 2, borderTop: "1px solid var(--border)", paddingTop: 6 }}>{v.emiDescription}</div>
                             )}
@@ -1463,6 +1815,88 @@ function UserPanel({ store, user }) {
                   </div>
                 );
               })()}
+            </div>
+          </>
+        )}
+
+        {tab === "drivers" && (
+          <>
+            <div className="topbar">
+              <div>
+                <h1 className="page-title">Drivers</h1>
+                <p className="page-sub">{drivers.length} registered drivers · Salary tracking</p>
+              </div>
+              <button className="btn btn-primary" onClick={() => { setModal("driver"); setForm({ salaryType: "per_trip" }); }}>
+                {Icon.plus} Add Driver
+              </button>
+            </div>
+            <div className="content">
+              {drivers.length === 0 && (
+                <div className="card"><div className="empty"><p>No drivers yet. Add a driver to assign them to trips and track salary.</p></div></div>
+              )}
+              <div className="grid g3">
+                {drivers.map(d => {
+                  const thisMonth = today().slice(0, 7);
+                  const driverTrips = trips.filter(t => t.driverId === d.id && t.date.startsWith(thisMonth));
+                  const monthTrips = driverTrips.reduce((s, t) => s + t.tripCount, 0);
+                  const salaryDue = d.salaryType === "per_trip"
+                    ? d.salaryAmount * monthTrips
+                    : d.salaryAmount;
+                  const payments = store.firmDriverPayments(d.id).filter(p => p.month === thisMonth);
+                  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+                  const remaining = Math.max(0, salaryDue - totalPaid);
+                  const allPayments = store.firmDriverPayments(d.id);
+                  return (
+                    <div key={d.id} className="card">
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ width: 40, height: 40, background: "var(--teal-dim)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontFamily: "Syne", fontWeight: 700, color: "var(--teal)" }}>
+                            {d.name[0]}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, fontFamily: "Syne", fontSize: 14 }}>{d.name}</div>
+                            <div style={{ fontSize: 11, color: "var(--text3)" }}>{d.mobile || "—"}</div>
+                          </div>
+                        </div>
+                        <span className={`badge ${d.salaryType === "salaried" ? "badge-accent" : "badge-teal"}`}>
+                          {d.salaryType === "salaried" ? "Salaried" : "Per Trip"}
+                        </span>
+                      </div>
+                      <hr className="divider" />
+                      <div style={{ display: "grid", gap: 6, fontSize: 12, marginBottom: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ color: "var(--text3)" }}>This month trips</span>
+                          <span style={{ color: "var(--text)", fontWeight: 500 }}>{monthTrips}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ color: "var(--text3)" }}>
+                            {d.salaryType === "per_trip" ? `Salary (${fmt(d.salaryAmount)}/trip)` : "Monthly salary"}
+                          </span>
+                          <span style={{ color: "var(--accent)", fontWeight: 600 }}>{fmt(salaryDue)}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ color: "var(--text3)" }}>Paid this month</span>
+                          <span style={{ color: "var(--teal)", fontWeight: 600 }}>{fmt(totalPaid)}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 2 }}>
+                          <span style={{ fontWeight: 600 }}>Remaining</span>
+                          <span style={{ color: remaining > 0 ? "var(--red)" : "var(--teal)", fontWeight: 700, fontFamily: "Syne" }}>{fmt(remaining)}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: "center" }}
+                          onClick={() => { setModal("driverPayment"); setForm({ driverPaymentId: d.id, date: today() }); }}>
+                          + Record Payment
+                        </button>
+                        <button className="btn btn-outline btn-sm" style={{ flex: 1, justifyContent: "center" }}
+                          onClick={() => setDriverDetail({ driver: d, allPayments, thisMonth, salaryDue, totalPaid, remaining, driverTrips })}>
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </>
         )}
@@ -1604,20 +2038,36 @@ function UserPanel({ store, user }) {
         <Modal title="Add Trip Entry" onClose={() => setModal(null)}
           footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitTrip}>{Icon.lock} Lock & Save</button></>}>
           <div className="form-grid">
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div><label>Client Name *</label><input placeholder="Client / builder name" value={form.clientName || ""} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} /></div>
               <div><label>Date *</label><input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} /></div>
             </div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div><label>Partner (Entry by) *</label>
                 <select value={form.partnerId || ""} onChange={e => setForm(p => ({ ...p, partnerId: e.target.value }))}>
                   <option value="">— Select —</option>
                   {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
-              <div><label>Driver Name *</label><input placeholder="Driver's name" value={form.driverName || ""} onChange={e => setForm(p => ({ ...p, driverName: e.target.value }))} /></div>
+              <div>
+                <label>Driver *</label>
+                {drivers.length > 0 ? (
+                  <>
+                    <select value={form.driverId || ""} onChange={e => setForm(p => ({ ...p, driverId: e.target.value, driverName: "" }))}>
+                      <option value="">— Select Driver —</option>
+                      {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      <option value="__manual__">Type name manually…</option>
+                    </select>
+                    {form.driverId === "__manual__" && (
+                      <input style={{ marginTop: 6 }} placeholder="Driver's name" value={form.driverName || ""} onChange={e => setForm(p => ({ ...p, driverName: e.target.value }))} />
+                    )}
+                  </>
+                ) : (
+                  <input placeholder="Driver's name" value={form.driverName || ""} onChange={e => setForm(p => ({ ...p, driverName: e.target.value }))} />
+                )}
+              </div>
             </div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div><label>Vehicle *</label>
                 <select value={form.vehicleId || ""} onChange={e => setForm(p => ({ ...p, vehicleId: e.target.value }))}>
                   <option value="">— Select Vehicle —</option>
@@ -1626,7 +2076,7 @@ function UserPanel({ store, user }) {
               </div>
               <div><label>Place / Location *</label><input placeholder="Site or quarry location" value={form.place || ""} onChange={e => setForm(p => ({ ...p, place: e.target.value }))} /></div>
             </div>
-            <div className="fg3" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr 1fr" }}>
+            <div className="fg3">
               <div><label>Item *</label>
                 <select value={form.item || ""} onChange={e => setForm(p => ({ ...p, item: e.target.value }))}>
                   <option value="">— Select —</option>
@@ -1684,10 +2134,35 @@ function UserPanel({ store, user }) {
       )}
 
       {modal === "vehicle" && (
-        <Modal title="Add Vehicle" onClose={() => setModal(null)}
-          footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitVehicle}>Add Vehicle</button></>}>
+        <Modal title="Add Vehicles" onClose={() => setModal(null)}
+          footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitVehicle}>Add {(form.vehicleRows||[]).filter(r=>r.number?.trim()).length || ""} Vehicle{(form.vehicleRows||[]).filter(r=>r.number?.trim()).length !== 1 ? "s" : ""}</button></>}>
           <div className="form-grid">
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 2 }}>Enter one vehicle per row. Click + to add more.</div>
+            {(form.vehicleRows || [{ number: "", type: "Dumper" }]).map((row, i) => (
+              <div key={i} className="veh-row">
+                <div><label>Vehicle Number *</label><input placeholder="e.g. RJ-14-GA-1234" value={row.number || ""} onChange={e => setForm(p => { const r = [...p.vehicleRows]; r[i] = { ...r[i], number: e.target.value }; return { ...p, vehicleRows: r }; })} /></div>
+                <div><label>Type</label>
+                  <select value={row.type || "Dumper"} onChange={e => setForm(p => { const r = [...p.vehicleRows]; r[i] = { ...r[i], type: e.target.value }; return { ...p, vehicleRows: r }; })}>
+                    <option>Dumper</option><option>Truck</option><option>Loader</option><option>JCB</option><option>Dumper 10 wheels</option><option>Dumper 12 wheels</option><option>Dumper 16 wheels</option><option>Tractor</option>
+                  </select>
+                </div>
+                <button style={{ height: 36, width: 36, border: "1px solid var(--border)", borderRadius: "var(--radius)", background: "var(--bg3)", color: "var(--red)", cursor: "pointer", fontSize: 18, lineHeight: 1, display: (form.vehicleRows||[]).length > 1 ? "flex" : "none", alignItems: "center", justifyContent: "center" }}
+                  onClick={() => setForm(p => ({ ...p, vehicleRows: p.vehicleRows.filter((_, j) => j !== i) }))}>×</button>
+              </div>
+            ))}
+            <button className="btn btn-outline btn-sm" style={{ alignSelf: "flex-start", marginTop: 2 }}
+              onClick={() => setForm(p => ({ ...p, vehicleRows: [...(p.vehicleRows || []), { number: "", type: "Dumper" }] }))}>
+              + Add Another Vehicle
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {modal === "editVehicle" && (
+        <Modal title="Edit Vehicle" onClose={() => { setModal(null); setForm({}); }}
+          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitEditVehicle}>Save Changes</button></>}>
+          <div className="form-grid">
+            <div className="fg2">
               <div><label>Vehicle Number *</label><input placeholder="e.g. RJ-14-GA-1234" value={form.number || ""} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></div>
               <div><label>Type</label>
                 <select value={form.type || "Dumper"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
@@ -1696,22 +2171,32 @@ function UserPanel({ store, user }) {
               </div>
             </div>
             <hr className="divider" />
-            <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: -4 }}>EMI Details <span style={{ opacity: .6 }}>(optional — leave blank if no loan)</span></div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: -4 }}>EMI Details <span style={{ opacity: .6 }}>(leave blank to remove EMI)</span></div>
+            <div className="fg2">
               <div><label>Monthly EMI (₹)</label><input type="number" min="0" placeholder="e.g. 25000" value={form.emiAmount || ""} onChange={e => setForm(p => ({ ...p, emiAmount: e.target.value }))} /></div>
               <div><label>Tenure (Months)</label><input type="number" min="1" placeholder="e.g. 36" value={form.emiTenureMonths || ""} onChange={e => setForm(p => ({ ...p, emiTenureMonths: e.target.value }))} /></div>
             </div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div><label>EMI Start Date</label><input type="date" value={form.emiStartDate || ""} onChange={e => setForm(p => ({ ...p, emiStartDate: e.target.value }))} /></div>
               <div><label>Loan / Bank Note</label><input placeholder="e.g. SBI Loan #123456" value={form.emiDescription || ""} onChange={e => setForm(p => ({ ...p, emiDescription: e.target.value }))} /></div>
             </div>
-            {form.emiAmount > 0 && form.emiTenureMonths > 0 && (
+            {Number(form.emiAmount) > 0 && Number(form.emiTenureMonths) > 0 && (
               <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 12 }}>
                 <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".7px", marginBottom: 8 }}>EMI Preview</div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                   <span style={{ color: "var(--text2)" }}>Total Loan Cost</span>
                   <span style={{ color: "var(--blue)", fontWeight: 600, fontFamily: "Syne" }}>{fmt(Number(form.emiAmount) * Number(form.emiTenureMonths))}</span>
                 </div>
+                {form.emiStartDate && (() => {
+                  const elapsed = Math.floor((new Date() - new Date(form.emiStartDate)) / (30 * 24 * 60 * 60 * 1000));
+                  const remaining = Math.max(0, Number(form.emiTenureMonths) - elapsed);
+                  return (
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--text2)" }}>Remaining</span>
+                      <span style={{ color: remaining === 0 ? "var(--teal)" : "var(--text)", fontWeight: 600, fontFamily: "Syne" }}>{remaining === 0 ? "Paid off" : `${remaining} mo · ${fmt(remaining * Number(form.emiAmount))}`}</span>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -1719,13 +2204,21 @@ function UserPanel({ store, user }) {
       )}
 
       {modal === "expense" && (
-        <Modal title="Add Expense Type" onClose={() => setModal(null)}
-          footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitExpense}>Add Expense</button></>}>
+        <Modal title="Add Expense Types" onClose={() => setModal(null)}
+          footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitExpense}>Add {(form.expenseRows||[]).filter(r=>r.label?.trim()).length || ""} Expense{(form.expenseRows||[]).filter(r=>r.label?.trim()).length !== 1 ? "s" : ""}</button></>}>
           <div className="form-grid">
-            <div><label>Expense Label *</label><input placeholder="e.g. Diesel, Driver Wages" value={form.label || ""} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} /></div>
-            <div style={{ fontSize: 11, color: "var(--text3)" }}>
-              Expense types are labels only. Amounts are entered per trip.
-            </div>
+            <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 2 }}>Labels only — amounts are entered per trip. Click + to add more.</div>
+            {(form.expenseRows || [{ label: "" }]).map((row, i) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "end" }}>
+                <div><label>Expense Label *</label><input placeholder="e.g. Diesel, Driver Wages" value={row.label || ""} onChange={e => setForm(p => { const r = [...p.expenseRows]; r[i] = { label: e.target.value }; return { ...p, expenseRows: r }; })} /></div>
+                <button style={{ height: 36, width: 36, border: "1px solid var(--border)", borderRadius: "var(--radius)", background: "var(--bg3)", color: "var(--red)", cursor: "pointer", fontSize: 18, lineHeight: 1, display: (form.expenseRows||[]).length > 1 ? "flex" : "none", alignItems: "center", justifyContent: "center" }}
+                  onClick={() => setForm(p => ({ ...p, expenseRows: p.expenseRows.filter((_, j) => j !== i) }))}>×</button>
+              </div>
+            ))}
+            <button className="btn btn-outline btn-sm" style={{ alignSelf: "flex-start", marginTop: 2 }}
+              onClick={() => setForm(p => ({ ...p, expenseRows: [...(p.expenseRows || []), { label: "" }] }))}>
+              + Add Another Expense
+            </button>
           </div>
         </Modal>
       )}
@@ -1734,7 +2227,7 @@ function UserPanel({ store, user }) {
         <Modal title="Add Credit/Debit Transaction" onClose={() => setModal(null)}
           footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitTransaction}>Save Transaction</button></>}>
           <div className="form-grid">
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div>
                 <label>Transaction Type *</label>
                 <select value={form.type || "credit"} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
@@ -1744,7 +2237,7 @@ function UserPanel({ store, user }) {
               </div>
               <div><label>Amount (₹) *</label><input type="number" min="0" step="0.01" placeholder="e.g. 5000" value={form.amount || ""} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></div>
             </div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div>
                 <label>Category *</label>
                 <select value={form.category || ""} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
@@ -1757,7 +2250,7 @@ function UserPanel({ store, user }) {
               <div><label>Date *</label><input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} /></div>
             </div>
             <div><label>Description</label><input placeholder="Brief description of transaction" value={form.description || ""} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></div>
-            <div className="fg2" style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="fg2">
               <div>
                 <label>Payment Method</label>
                 <select value={form.paymentMethod || ""} onChange={e => setForm(p => ({ ...p, paymentMethod: e.target.value }))}>
@@ -1785,6 +2278,141 @@ function UserPanel({ store, user }) {
           </div>
         </Modal>
       )}
+
+      {modal === "driver" && (
+        <Modal title="Add Driver" onClose={() => { setModal(null); setForm({}); }}
+          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitDriver}>Add Driver</button></>}>
+          <div className="form-grid">
+            <div className="fg2">
+              <div><label>Full Name *</label><input placeholder="Driver's name" value={form.name || ""} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+              <div><label>Mobile</label><input placeholder="10-digit mobile (optional)" value={form.mobile || ""} onChange={e => setForm(p => ({ ...p, mobile: e.target.value }))} /></div>
+            </div>
+            <div>
+              <label>Salary Type *</label>
+              <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+                <button
+                  className={`btn ${form.salaryType === "per_trip" ? "btn-primary" : "btn-outline"}`}
+                  style={{ flex: 1, justifyContent: "center" }}
+                  onClick={() => setForm(p => ({ ...p, salaryType: "per_trip" }))}>
+                  Per Trip
+                </button>
+                <button
+                  className={`btn ${form.salaryType === "salaried" ? "btn-primary" : "btn-outline"}`}
+                  style={{ flex: 1, justifyContent: "center" }}
+                  onClick={() => setForm(p => ({ ...p, salaryType: "salaried" }))}>
+                  Salaried (Monthly)
+                </button>
+              </div>
+            </div>
+            <div>
+              <label>{form.salaryType === "salaried" ? "Monthly Salary (₹) *" : "Rate per Trip (₹) *"}</label>
+              <input type="number" min="0" placeholder="e.g. 500" value={form.salaryAmount || ""} onChange={e => setForm(p => ({ ...p, salaryAmount: e.target.value }))} />
+            </div>
+            <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 12, color: "var(--text3)" }}>
+              {form.salaryType === "salaried"
+                ? "Fixed monthly salary — driver earns a flat amount regardless of trips."
+                : "Per-trip salary — driver earns a fixed rate for each trip completed."}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {modal === "driverPayment" && (
+        <Modal title="Record Salary Payment" onClose={() => { setModal(null); setForm({}); }}
+          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitDriverPayment}>Save Payment</button></>}>
+          <div className="form-grid">
+            {(() => {
+              const d = drivers.find(dr => dr.id === form.driverPaymentId);
+              return d ? (
+                <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 13 }}>
+                  Recording payment for <strong>{d.name}</strong>
+                </div>
+              ) : null;
+            })()}
+            <div className="fg2">
+              <div><label>Amount Paid (₹) *</label><input type="number" min="1" placeholder="e.g. 5000" value={form.amount || ""} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} autoFocus /></div>
+              <div><label>Date</label><input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} /></div>
+            </div>
+            <div><label>Note (optional)</label><input placeholder="e.g. Advance, Partial payment…" value={form.note || ""} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} /></div>
+          </div>
+        </Modal>
+      )}
+
+      {driverDetail && (() => {
+        const { driver: d, allPayments, thisMonth, salaryDue, totalPaid, remaining, driverTrips } = driverDetail;
+        return (
+          <Modal title={`${d.name} — Driver Details`} onClose={() => setDriverDetail(null)}>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div className="grid g2" style={{ gap: 10 }}>
+                {[
+                  ["Name", d.name],
+                  ["Mobile", d.mobile || "—"],
+                  ["Salary Type", d.salaryType === "salaried" ? "Salaried (Monthly)" : "Per Trip"],
+                  ["Rate", d.salaryType === "per_trip" ? `${fmt(d.salaryAmount)} / trip` : `${fmt(d.salaryAmount)} / month`],
+                ].map(([k, v]) => (
+                  <div key={k} className="card-sm">
+                    <div style={{ fontSize: 10, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".7px" }}>{k}</div>
+                    <div style={{ fontWeight: 500, marginTop: 2 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="card-sm" style={{ background: "var(--bg3)" }}>
+                <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>This Month ({thisMonth})</div>
+                <div className="exp-row"><span className="er-label">Trips completed</span><span className="er-val">{driverTrips.reduce((s, t) => s + t.tripCount, 0)}</span></div>
+                <div className="exp-row"><span className="er-label">Salary due</span><span className="er-val">{fmt(salaryDue)}</span></div>
+                <div className="exp-row"><span className="er-label" style={{ color: "var(--teal)" }}>Paid so far</span><span className="er-val" style={{ color: "var(--teal)" }}>{fmt(totalPaid)}</span></div>
+                <div style={{ borderTop: "1px solid var(--border2)", marginTop: 8, paddingTop: 10, display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontWeight: 600 }}>Remaining</span>
+                  <span style={{ fontFamily: "Syne", fontWeight: 700, color: remaining > 0 ? "var(--red)" : "var(--teal)" }}>{fmt(remaining)}</span>
+                </div>
+              </div>
+              {driverTrips.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Trips this month</div>
+                  <div className="table-wrap">
+                    <table>
+                      <thead><tr><th>Date</th><th>Client</th><th>Vehicle</th><th>Trips</th></tr></thead>
+                      <tbody>
+                        {driverTrips.map(t => {
+                          const veh = vehicles.find(v => v.id === t.vehicleId);
+                          return (
+                            <tr key={t.id}>
+                              <td>{t.date}</td>
+                              <td className="td-bold">{t.clientName}</td>
+                              <td style={{ fontSize: 11 }}>{veh?.number}</td>
+                              <td>{t.tripCount}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {allPayments.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Payment History</div>
+                  <div className="table-wrap">
+                    <table>
+                      <thead><tr><th>Date</th><th>Month</th><th>Amount</th><th>Note</th></tr></thead>
+                      <tbody>
+                        {allPayments.map(p => (
+                          <tr key={p.id}>
+                            <td>{p.date}</td>
+                            <td>{p.month}</td>
+                            <td className="td-teal">{fmt(p.amount)}</td>
+                            <td style={{ fontSize: 11, color: "var(--text3)" }}>{p.note || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* Trip Detail Modal */}
       {tripDetail && (() => {
@@ -1830,7 +2458,7 @@ function UserPanel({ store, user }) {
         return (
           <Modal title="Trip Detail" onClose={() => { setTripDetail(null); setEditingProfit(false); setEditedProfitValue(""); setEditingClientPaid(false); setClientPaidValue(""); }}>
             <div style={{ display: "grid", gap: 12 }}>
-              <div className="grid g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div className="grid g2" style={{ gap: 10 }}>
                 {[['Client', tripDetail.clientName], ['Date', tripDetail.date], ['Driver', tripDetail.driverName], ['Vehicle', veh?.number], ['Place', tripDetail.place], ['Item', tripDetail.item], ['No. of Trips', tripDetail.tripCount], ['Rate/Trip', fmt(tripDetail.ratePerTrip)], ['Entered by', by?.name]].map(([k, v]) => (
                   <div key={k} className="card-sm">
                     <div style={{ fontSize: 10, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".7px" }}>{k}</div>
