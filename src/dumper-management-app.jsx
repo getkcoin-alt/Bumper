@@ -301,6 +301,7 @@ const Icon = {
   wallet: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>,
   arrowUp: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>,
   arrowDown: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>,
+  driver: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><path d="M16 3.5a4 4 0 010 9"/><path d="M20 19c0-3-1.8-5.5-4-6.5"/></svg>,
 };
 
 // ── App State ─────────────────────────────────────────────────────────────────
@@ -311,6 +312,8 @@ function useStore() {
   const [expenses, setExpenses] = useState([]);
   const [trips, setTrips] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [driverPayments, setDriverPayments] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -382,6 +385,18 @@ function useStore() {
         paymentMethod: tx.payment_method,
       })));
 
+      // Load drivers
+      const { data: driversData, error: driversError } = await supabase
+        .from('drivers').select('*').order('created_at', { ascending: false });
+      if (driversError) throw driversError;
+      setDrivers((driversData || []).map(dbToApp.driver));
+
+      // Load driver payments
+      const { data: driverPaymentsData, error: driverPaymentsError } = await supabase
+        .from('driver_payments').select('*').order('date', { ascending: false });
+      if (driverPaymentsError) throw driverPaymentsError;
+      setDriverPayments((driverPaymentsData || []).map(dbToApp.driverPayment));
+
     } catch (error) {
       console.error('Error loading data:', error);
       alert('Failed to load data from database. Check console for details.');
@@ -395,6 +410,8 @@ function useStore() {
   const firmExpenses = (firmId) => expenses.filter(e => e.firmId === firmId);
   const firmTrips = (firmId) => trips.filter(t => t.firmId === firmId);
   const firmTransactions = (firmId) => transactions.filter(tx => tx.firmId === firmId);
+  const firmDrivers = (firmId) => drivers.filter(d => d.firmId === firmId);
+  const firmDriverPayments = (driverId) => driverPayments.filter(p => p.driverId === driverId);
 
   const addFirm = async (name) => {
     try {
@@ -571,6 +588,36 @@ function useStore() {
     }
   };
 
+  const addDriver = async (data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('drivers').insert([appToDb.driver(data)]).select().single();
+      if (error) throw error;
+      const newDriver = dbToApp.driver(dbData);
+      setDrivers(p => [newDriver, ...p]);
+      return newDriver;
+    } catch (error) {
+      console.error('Error adding driver:', error);
+      alert('Failed to add driver');
+      throw error;
+    }
+  };
+
+  const addDriverPayment = async (data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('driver_payments').insert([appToDb.driverPayment(data)]).select().single();
+      if (error) throw error;
+      const newPayment = dbToApp.driverPayment(dbData);
+      setDriverPayments(p => [newPayment, ...p]);
+      return newPayment;
+    } catch (error) {
+      console.error('Error adding driver payment:', error);
+      alert('Failed to record payment');
+      throw error;
+    }
+  };
+
   // Calculate totals for a trip
   const calcTrip = (trip) => {
     const fexp = firmExpenses(trip.firmId);
@@ -631,10 +678,13 @@ function useStore() {
       await supabase.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('vehicles').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('driver_payments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('drivers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('users').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('firms').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       setFirms([]); setUsers([]); setVehicles([]);
       setExpenses([]); setTrips([]); setTransactions([]);
+      setDrivers([]); setDriverPayments([]);
     } catch (error) {
       console.error('Error resetting data:', error);
       alert('Failed to reset data: ' + error.message);
@@ -643,10 +693,10 @@ function useStore() {
   };
 
   return {
-    firms, users, vehicles, expenses, trips, transactions, currentUser, setCurrentUser, loading,
+    firms, users, vehicles, expenses, trips, transactions, drivers, driverPayments, currentUser, setCurrentUser, loading,
 
-    firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions,
-    addFirm, addUser, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction,
+    firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions, firmDrivers, firmDriverPayments,
+    addFirm, addUser, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction, addDriver, addDriverPayment,
     calcTrip, firmSummary, resetAllData,
   };
 }
@@ -959,6 +1009,7 @@ function UserPanel({ store, user }) {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [tripDetail, setTripDetail] = useState(null);
+  const [driverDetail, setDriverDetail] = useState(null);
   const [editingProfit, setEditingProfit] = useState(false);
   const [editedProfitValue, setEditedProfitValue] = useState("");
   const [editingClientPaid, setEditingClientPaid] = useState(false);
@@ -976,6 +1027,7 @@ function UserPanel({ store, user }) {
   const expenses = store.firmExpenses(user.firmId);
   const trips = store.firmTrips(user.firmId);
   const transactions = store.firmTransactions(user.firmId);
+  const drivers = store.firmDrivers(user.firmId);
   const summary = store.firmSummary(user.firmId);
 
   const navItems = [
@@ -984,6 +1036,7 @@ function UserPanel({ store, user }) {
     { id: "transactions", label: "Credit/Debit", icon: Icon.wallet },
     { id: "expenses", label: "Expenses", icon: Icon.expense },
     { id: "vehicles", label: "Vehicles", icon: Icon.vehicle },
+    { id: "drivers", label: "Drivers", icon: Icon.driver },
     { id: "partners", label: "Partners", icon: Icon.people },
     { id: "balance", label: "Balance", icon: Icon.balance },
   ];
@@ -1029,11 +1082,15 @@ function UserPanel({ store, user }) {
   const tripProfit = tripIncome - tripExpenses;
 
   const submitTrip = () => {
+    const selectedDriver = drivers.find(d => d.id === form.driverId);
+    const resolvedDriverName = selectedDriver ? selectedDriver.name : (form.driverName?.trim() || "");
+    const resolvedDriverId = selectedDriver ? selectedDriver.id : null;
+
     if (
       !form.clientName?.trim() ||
       !form.partnerId ||
       !form.vehicleId ||
-      !form.driverName?.trim() ||
+      !resolvedDriverName ||
       !form.place?.trim() ||
       !form.item ||
       !form.tripCount ||
@@ -1052,7 +1109,8 @@ function UserPanel({ store, user }) {
       firmId: user.firmId,
       clientName: form.clientName,
       partnerId: form.partnerId,
-      driverName: form.driverName,
+      driverId: resolvedDriverId,
+      driverName: resolvedDriverName,
       vehicleId: form.vehicleId,
       place: form.place,
       item: form.item,
@@ -1113,6 +1171,35 @@ function UserPanel({ store, user }) {
       date: form.date,
       referenceNumber: form.referenceNumber?.trim() || "",
       paymentMethod: form.paymentMethod || "",
+    });
+    setModal(null);
+    setForm({});
+  };
+
+  const submitDriver = async () => {
+    if (!form.name?.trim()) return alert("Driver name is required.");
+    await store.addDriver({
+      firmId: user.firmId,
+      name: form.name.trim(),
+      mobile: form.mobile?.trim() || "",
+      salaryType: form.salaryType || "per_trip",
+      salaryAmount: Number(form.salaryAmount) || 0,
+    });
+    setModal(null);
+    setForm({});
+  };
+
+  const submitDriverPayment = async () => {
+    if (!form.amount || Number(form.amount) <= 0) return alert("Enter a valid payment amount.");
+    if (!form.driverPaymentId) return;
+    const date = form.date || today();
+    await store.addDriverPayment({
+      driverId: form.driverPaymentId,
+      firmId: user.firmId,
+      amount: Number(form.amount),
+      note: form.note?.trim() || "",
+      date,
+      month: date.slice(0, 7),
     });
     setModal(null);
     setForm({});
@@ -1725,6 +1812,86 @@ function UserPanel({ store, user }) {
           </>
         )}
 
+        {tab === "drivers" && (
+          <>
+            <div className="topbar">
+              <div>
+                <h1 className="page-title">Drivers</h1>
+                <p className="page-sub">{drivers.length} registered drivers · Salary tracking</p>
+              </div>
+              <button className="btn btn-primary" onClick={() => { setModal("driver"); setForm({ salaryType: "per_trip" }); }}>
+                {Icon.plus} Add Driver
+              </button>
+            </div>
+            <div className="content">
+              {drivers.length === 0 && (
+                <div className="card"><div className="empty"><p>No drivers yet. Add a driver to assign them to trips and track salary.</p></div></div>
+              )}
+              <div className="grid g3">
+                {drivers.map(d => {
+                  const thisMonth = today().slice(0, 7);
+                  const driverTrips = trips.filter(t => t.driverId === d.id && t.date.startsWith(thisMonth));
+                  const monthTrips = driverTrips.reduce((s, t) => s + t.tripCount, 0);
+                  const salaryDue = d.salaryType === "per_trip" ? d.salaryAmount * monthTrips : d.salaryAmount;
+                  const payments = store.firmDriverPayments(d.id).filter(p => p.month === thisMonth);
+                  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+                  const remaining = Math.max(0, salaryDue - totalPaid);
+                  const allPayments = store.firmDriverPayments(d.id);
+                  return (
+                    <div key={d.id} className="card">
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ width: 40, height: 40, background: "var(--teal-dim)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontFamily: "Syne", fontWeight: 700, color: "var(--teal)" }}>
+                            {d.name[0]}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, fontFamily: "Syne", fontSize: 14 }}>{d.name}</div>
+                            <div style={{ fontSize: 11, color: "var(--text3)" }}>{d.mobile || "—"}</div>
+                          </div>
+                        </div>
+                        <span className={`badge ${d.salaryType === "salaried" ? "badge-accent" : "badge-teal"}`}>
+                          {d.salaryType === "salaried" ? "Salaried" : "Per Trip"}
+                        </span>
+                      </div>
+                      <hr className="divider" />
+                      <div style={{ display: "grid", gap: 6, fontSize: 12, marginBottom: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ color: "var(--text3)" }}>This month trips</span>
+                          <span style={{ color: "var(--text)", fontWeight: 500 }}>{monthTrips}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ color: "var(--text3)" }}>
+                            {d.salaryType === "per_trip" ? `Salary (${fmt(d.salaryAmount)}/trip)` : "Monthly salary"}
+                          </span>
+                          <span style={{ color: "var(--accent)", fontWeight: 600 }}>{fmt(salaryDue)}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ color: "var(--text3)" }}>Paid this month</span>
+                          <span style={{ color: "var(--teal)", fontWeight: 600 }}>{fmt(totalPaid)}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 2 }}>
+                          <span style={{ fontWeight: 600 }}>Remaining</span>
+                          <span style={{ color: remaining > 0 ? "var(--red)" : "var(--teal)", fontWeight: 700, fontFamily: "Syne" }}>{fmt(remaining)}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: "center" }}
+                          onClick={() => { setModal("driverPayment"); setForm({ driverPaymentId: d.id, date: today() }); }}>
+                          + Record Payment
+                        </button>
+                        <button className="btn btn-outline btn-sm" style={{ flex: 1, justifyContent: "center" }}
+                          onClick={() => setDriverDetail({ driver: d, allPayments, thisMonth, salaryDue, totalPaid, remaining, driverTrips })}>
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
         {tab === "partners" && (
           <>
             <div className="topbar">
@@ -1873,7 +2040,23 @@ function UserPanel({ store, user }) {
                   {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
-              <div><label>Driver Name *</label><input placeholder="Driver's name" value={form.driverName || ""} onChange={e => setForm(p => ({ ...p, driverName: e.target.value }))} /></div>
+              <div>
+                <label>Driver *</label>
+                {drivers.length > 0 ? (
+                  <>
+                    <select value={form.driverId || ""} onChange={e => setForm(p => ({ ...p, driverId: e.target.value, driverName: "" }))}>
+                      <option value="">— Select Driver —</option>
+                      {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      <option value="__manual__">Type name manually…</option>
+                    </select>
+                    {form.driverId === "__manual__" && (
+                      <input style={{ marginTop: 6 }} placeholder="Driver's name" value={form.driverName || ""} onChange={e => setForm(p => ({ ...p, driverName: e.target.value }))} />
+                    )}
+                  </>
+                ) : (
+                  <input placeholder="Driver's name" value={form.driverName || ""} onChange={e => setForm(p => ({ ...p, driverName: e.target.value }))} />
+                )}
+              </div>
             </div>
             <div className="fg2">
               <div><label>Vehicle *</label>
@@ -2086,6 +2269,114 @@ function UserPanel({ store, user }) {
           </div>
         </Modal>
       )}
+
+      {modal === "driver" && (
+        <Modal title="Add Driver" onClose={() => { setModal(null); setForm({}); }}
+          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitDriver}>Add Driver</button></>}>
+          <div className="form-grid">
+            <div className="fg2">
+              <div><label>Full Name *</label><input placeholder="Driver's name" value={form.name || ""} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+              <div><label>Mobile</label><input placeholder="10-digit mobile (optional)" value={form.mobile || ""} onChange={e => setForm(p => ({ ...p, mobile: e.target.value }))} /></div>
+            </div>
+            <div>
+              <label>Salary Type *</label>
+              <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+                <button className={`btn ${form.salaryType === "per_trip" ? "btn-primary" : "btn-outline"}`}
+                  style={{ flex: 1, justifyContent: "center" }}
+                  onClick={() => setForm(p => ({ ...p, salaryType: "per_trip" }))}>Per Trip</button>
+                <button className={`btn ${form.salaryType === "salaried" ? "btn-primary" : "btn-outline"}`}
+                  style={{ flex: 1, justifyContent: "center" }}
+                  onClick={() => setForm(p => ({ ...p, salaryType: "salaried" }))}>Salaried (Monthly)</button>
+              </div>
+            </div>
+            <div>
+              <label>{form.salaryType === "salaried" ? "Monthly Salary (₹) *" : "Rate per Trip (₹) *"}</label>
+              <input type="number" min="0" placeholder="e.g. 500" value={form.salaryAmount || ""} onChange={e => setForm(p => ({ ...p, salaryAmount: e.target.value }))} />
+            </div>
+            <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 12, color: "var(--text3)" }}>
+              {form.salaryType === "salaried"
+                ? "Fixed monthly salary — driver earns a flat amount regardless of trips."
+                : "Per-trip salary — driver earns a fixed rate for each trip completed."}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {modal === "driverPayment" && (
+        <Modal title="Record Salary Payment" onClose={() => { setModal(null); setForm({}); }}
+          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitDriverPayment}>Save Payment</button></>}>
+          <div className="form-grid">
+            {(() => {
+              const d = drivers.find(dr => dr.id === form.driverPaymentId);
+              return d ? <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 13 }}>Recording payment for <strong>{d.name}</strong></div> : null;
+            })()}
+            <div className="fg2">
+              <div><label>Amount Paid (₹) *</label><input type="number" min="1" placeholder="e.g. 5000" value={form.amount || ""} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} autoFocus /></div>
+              <div><label>Date</label><input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} /></div>
+            </div>
+            <div><label>Note (optional)</label><input placeholder="e.g. Advance, Partial payment…" value={form.note || ""} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} /></div>
+          </div>
+        </Modal>
+      )}
+
+      {driverDetail && (() => {
+        const { driver: d, allPayments, thisMonth, salaryDue, totalPaid, remaining, driverTrips } = driverDetail;
+        return (
+          <Modal title={`${d.name} — Driver Details`} onClose={() => setDriverDetail(null)}>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div className="grid g2" style={{ gap: 10 }}>
+                {[["Name", d.name], ["Mobile", d.mobile || "—"], ["Salary Type", d.salaryType === "salaried" ? "Salaried (Monthly)" : "Per Trip"], ["Rate", d.salaryType === "per_trip" ? `${fmt(d.salaryAmount)} / trip` : `${fmt(d.salaryAmount)} / month`]].map(([k, v]) => (
+                  <div key={k} className="card-sm">
+                    <div style={{ fontSize: 10, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".7px" }}>{k}</div>
+                    <div style={{ fontWeight: 500, marginTop: 2 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="card-sm" style={{ background: "var(--bg3)" }}>
+                <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>This Month ({thisMonth})</div>
+                <div className="exp-row"><span className="er-label">Trips completed</span><span className="er-val">{driverTrips.reduce((s, t) => s + t.tripCount, 0)}</span></div>
+                <div className="exp-row"><span className="er-label">Salary due</span><span className="er-val">{fmt(salaryDue)}</span></div>
+                <div className="exp-row"><span className="er-label" style={{ color: "var(--teal)" }}>Paid so far</span><span className="er-val" style={{ color: "var(--teal)" }}>{fmt(totalPaid)}</span></div>
+                <div style={{ borderTop: "1px solid var(--border2)", marginTop: 8, paddingTop: 10, display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontWeight: 600 }}>Remaining</span>
+                  <span style={{ fontFamily: "Syne", fontWeight: 700, color: remaining > 0 ? "var(--red)" : "var(--teal)" }}>{fmt(remaining)}</span>
+                </div>
+              </div>
+              {driverTrips.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Trips this month</div>
+                  <div className="table-wrap">
+                    <table>
+                      <thead><tr><th>Date</th><th>Client</th><th>Vehicle</th><th>Trips</th></tr></thead>
+                      <tbody>
+                        {driverTrips.map(t => {
+                          const veh = vehicles.find(v => v.id === t.vehicleId);
+                          return <tr key={t.id}><td>{t.date}</td><td className="td-bold">{t.clientName}</td><td style={{ fontSize: 11 }}>{veh?.number}</td><td>{t.tripCount}</td></tr>;
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {allPayments.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Payment History</div>
+                  <div className="table-wrap">
+                    <table>
+                      <thead><tr><th>Date</th><th>Month</th><th>Amount</th><th>Note</th></tr></thead>
+                      <tbody>
+                        {allPayments.map(p => (
+                          <tr key={p.id}><td>{p.date}</td><td>{p.month}</td><td className="td-teal">{fmt(p.amount)}</td><td style={{ fontSize: 11, color: "var(--text3)" }}>{p.note || "—"}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* Trip Detail Modal */}
       {tripDetail && (() => {
