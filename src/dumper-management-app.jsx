@@ -314,6 +314,7 @@ function useStore() {
   const [transactions, setTransactions] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [driverPayments, setDriverPayments] = useState([]);
+  const [clients, setClients] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -397,6 +398,12 @@ function useStore() {
       if (driverPaymentsError) throw driverPaymentsError;
       setDriverPayments((driverPaymentsData || []).map(dbToApp.driverPayment));
 
+      // Load clients
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('clients').select('*').order('name', { ascending: true });
+      if (clientsError) throw clientsError;
+      setClients((clientsData || []).map(dbToApp.client));
+
     } catch (error) {
       console.error('Error loading data:', error);
       alert('Failed to load data from database. Check console for details.');
@@ -412,6 +419,7 @@ function useStore() {
   const firmTransactions = (firmId) => transactions.filter(tx => tx.firmId === firmId);
   const firmDrivers = (firmId) => drivers.filter(d => d.firmId === firmId);
   const firmDriverPayments = (driverId) => driverPayments.filter(p => p.driverId === driverId);
+  const firmClients = (firmId) => clients.filter(c => c.firmId === firmId);
 
   const addFirm = async (name) => {
     try {
@@ -588,6 +596,35 @@ function useStore() {
     }
   };
 
+  const addClient = async (data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('clients').insert([appToDb.client(data)]).select().single();
+      if (error) throw error;
+      const newClient = dbToApp.client(dbData);
+      setClients(p => [...p, newClient].sort((a, b) => a.name.localeCompare(b.name)));
+      return newClient;
+    } catch (error) {
+      console.error('Error adding client:', error);
+      alert('Failed to add client');
+      throw error;
+    }
+  };
+
+  const updateClient = async (id, data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('clients').update(appToDb.client(data)).eq('id', id).select().single();
+      if (error) throw error;
+      const updated = dbToApp.client(dbData);
+      setClients(p => p.map(c => c.id === id ? updated : c));
+    } catch (error) {
+      console.error('Error updating client:', error);
+      alert('Failed to update client');
+      throw error;
+    }
+  };
+
   const addDriver = async (data) => {
     try {
       const { data: dbData, error } = await supabase
@@ -680,11 +717,12 @@ function useStore() {
       await supabase.from('vehicles').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('driver_payments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('drivers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('clients').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('users').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('firms').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       setFirms([]); setUsers([]); setVehicles([]);
       setExpenses([]); setTrips([]); setTransactions([]);
-      setDrivers([]); setDriverPayments([]);
+      setDrivers([]); setDriverPayments([]); setClients([]);
     } catch (error) {
       console.error('Error resetting data:', error);
       alert('Failed to reset data: ' + error.message);
@@ -693,10 +731,10 @@ function useStore() {
   };
 
   return {
-    firms, users, vehicles, expenses, trips, transactions, drivers, driverPayments, currentUser, setCurrentUser, loading,
+    firms, users, vehicles, expenses, trips, transactions, drivers, driverPayments, clients, currentUser, setCurrentUser, loading,
 
-    firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions, firmDrivers, firmDriverPayments,
-    addFirm, addUser, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction, addDriver, addDriverPayment,
+    firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions, firmDrivers, firmDriverPayments, firmClients,
+    addFirm, addUser, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction, addDriver, addDriverPayment, addClient, updateClient,
     calcTrip, firmSummary, resetAllData,
   };
 }
@@ -1010,6 +1048,7 @@ function UserPanel({ store, user }) {
   const [form, setForm] = useState({});
   const [tripDetail, setTripDetail] = useState(null);
   const [driverDetail, setDriverDetail] = useState(null);
+  const [clientDetail, setClientDetail] = useState(null);
   const [editingProfit, setEditingProfit] = useState(false);
   const [editedProfitValue, setEditedProfitValue] = useState("");
   const [editingClientPaid, setEditingClientPaid] = useState(false);
@@ -1028,11 +1067,13 @@ function UserPanel({ store, user }) {
   const trips = store.firmTrips(user.firmId);
   const transactions = store.firmTransactions(user.firmId);
   const drivers = store.firmDrivers(user.firmId);
+  const clients = store.firmClients(user.firmId);
   const summary = store.firmSummary(user.firmId);
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: Icon.dashboard },
     { id: "trips", label: "Trips", icon: Icon.trips },
+    { id: "clients", label: "Clients", icon: Icon.people },
     { id: "transactions", label: "Credit/Debit", icon: Icon.wallet },
     { id: "expenses", label: "Expenses", icon: Icon.expense },
     { id: "vehicles", label: "Vehicles", icon: Icon.vehicle },
@@ -1209,6 +1250,24 @@ function UserPanel({ store, user }) {
     });
     setModal(null);
     setForm({});
+  };
+
+  const submitClient = async () => {
+    if (!form.name?.trim()) return alert("Client name is required.");
+    if (form.editClientId) {
+      await store.updateClient(form.editClientId, { firmId: user.firmId, name: form.name.trim(), mobile: form.mobile?.trim() || "", address: form.address?.trim() || "", notes: form.notes?.trim() || "" });
+    } else {
+      await store.addClient({ firmId: user.firmId, name: form.name.trim(), mobile: form.mobile?.trim() || "", address: form.address?.trim() || "", notes: form.notes?.trim() || "" });
+    }
+    setModal(null);
+    setForm({});
+  };
+
+  const importClientsFromTrips = async () => {
+    const existingNames = new Set(clients.map(c => c.name.toLowerCase().trim()));
+    const toImport = [...new Set(trips.map(t => t.clientName.trim()))].filter(n => !existingNames.has(n.toLowerCase()));
+    if (!toImport.length) return alert("All trip clients are already in your clients list.");
+    await Promise.all(toImport.map(name => store.addClient({ firmId: user.firmId, name, mobile: "", address: "", notes: "" })));
   };
 
   return (
@@ -1533,6 +1592,93 @@ function UserPanel({ store, user }) {
             </div>
           </>
         )}
+
+        {tab === "clients" && (() => {
+          const unlinked = trips.filter(t => !clients.some(c => c.name.toLowerCase() === t.clientName.toLowerCase()));
+          return (
+            <>
+              <div className="topbar">
+                <div>
+                  <h1 className="page-title">Clients</h1>
+                  <p className="page-sub">{clients.length} clients · Complete business record per client</p>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {unlinked.length > 0 && (
+                    <button className="btn btn-outline" onClick={importClientsFromTrips}>
+                      ↓ Import from trips
+                    </button>
+                  )}
+                  <button className="btn btn-primary" onClick={() => { setModal("client"); setForm({}); }}>
+                    {Icon.plus} Add Client
+                  </button>
+                </div>
+              </div>
+              <div className="content">
+                {clients.length === 0 && (
+                  <div className="card">
+                    <div className="empty">
+                      <p>No clients yet.</p>
+                      {trips.length > 0 && (
+                        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={importClientsFromTrips}>
+                          ↓ Import clients from existing trips
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div className="grid g3">
+                  {clients.map(c => {
+                    const cTrips = trips.filter(t => t.clientName.toLowerCase() === c.name.toLowerCase());
+                    const totalIncome = cTrips.reduce((s, t) => s + store.calcTrip(t).income, 0);
+                    const totalPaid = cTrips.reduce((s, t) => s + store.calcTrip(t).clientPaid, 0);
+                    const totalPending = cTrips.reduce((s, t) => s + store.calcTrip(t).pending, 0);
+                    const totalTripCount = cTrips.reduce((s, t) => s + t.tripCount, 0);
+                    return (
+                      <div key={c.id} className="card">
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ width: 40, height: 40, background: "var(--accent-dim)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontFamily: "Syne", fontWeight: 700, color: "var(--accent)" }}>
+                              {c.name[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, fontFamily: "Syne", fontSize: 14 }}>{c.name}</div>
+                              <div style={{ fontSize: 11, color: "var(--text3)" }}>{c.mobile || "—"}</div>
+                            </div>
+                          </div>
+                          <button className="btn btn-outline btn-sm" onClick={() => { setModal("client"); setForm({ editClientId: c.id, name: c.name, mobile: c.mobile, address: c.address, notes: c.notes }); }}>✎ Edit</button>
+                        </div>
+                        {c.address && <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 8 }}>{c.address}</div>}
+                        <hr className="divider" />
+                        <div style={{ display: "grid", gap: 6, fontSize: 12, marginBottom: 12 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--text3)" }}>Trip entries</span>
+                            <span style={{ color: "var(--text)", fontWeight: 500 }}>{cTrips.length} ({totalTripCount} trips)</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--text3)" }}>Total billed</span>
+                            <span style={{ color: "var(--accent)", fontWeight: 600 }}>{fmt(totalIncome)}</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--text3)" }}>Received</span>
+                            <span style={{ color: "var(--teal)", fontWeight: 600 }}>{fmt(totalPaid)}</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 2 }}>
+                            <span style={{ fontWeight: 600 }}>Pending</span>
+                            <span style={{ color: totalPending > 0 ? "var(--red)" : "var(--teal)", fontWeight: 700, fontFamily: "Syne" }}>{fmt(totalPending)}</span>
+                          </div>
+                        </div>
+                        <button className="btn btn-outline btn-sm" style={{ width: "100%", justifyContent: "center" }}
+                          onClick={() => setClientDetail({ client: c, cTrips, totalIncome, totalPaid, totalPending, totalTripCount })}>
+                          View Balance Sheet
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {tab === "transactions" && (
           <>
@@ -2295,6 +2441,103 @@ function UserPanel({ store, user }) {
           </div>
         </Modal>
       )}
+
+      {modal === "client" && (
+        <Modal title={form.editClientId ? "Edit Client" : "Add Client"} onClose={() => { setModal(null); setForm({}); }}
+          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitClient}>{form.editClientId ? "Save Changes" : "Add Client"}</button></>}>
+          <div className="form-grid">
+            <div className="fg2">
+              <div><label>Client / Company Name *</label><input placeholder="e.g. Raj Construction" value={form.name || ""} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+              <div><label>Mobile</label><input placeholder="Contact number (optional)" value={form.mobile || ""} onChange={e => setForm(p => ({ ...p, mobile: e.target.value }))} /></div>
+            </div>
+            <div><label>Address</label><input placeholder="Site / office address (optional)" value={form.address || ""} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} /></div>
+            <div><label>Notes</label><input placeholder="Any notes about this client (optional)" value={form.notes || ""} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} /></div>
+          </div>
+        </Modal>
+      )}
+
+      {clientDetail && (() => {
+        const { client: c, cTrips, totalIncome, totalPaid, totalPending, totalTripCount } = clientDetail;
+        const sortedTrips = [...cTrips].sort((a, b) => b.date.localeCompare(a.date));
+        return (
+          <Modal title={`${c.name} — Balance Sheet`} onClose={() => setClientDetail(null)}>
+            <div style={{ display: "grid", gap: 14 }}>
+              {/* Summary cards */}
+              <div className="grid g3" style={{ gap: 10 }}>
+                <div className="card-sm" style={{ background: "var(--accent-dim)", borderColor: "var(--accent)" }}>
+                  <div style={{ fontSize: 10, color: "var(--accent)", textTransform: "uppercase", letterSpacing: ".7px" }}>Total Billed</div>
+                  <div style={{ fontWeight: 700, fontFamily: "Syne", fontSize: 18, color: "var(--accent)", marginTop: 4 }}>{fmt(totalIncome)}</div>
+                  <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{cTrips.length} entries · {totalTripCount} trips</div>
+                </div>
+                <div className="card-sm" style={{ background: "var(--teal-dim)", borderColor: "var(--teal)" }}>
+                  <div style={{ fontSize: 10, color: "var(--teal)", textTransform: "uppercase", letterSpacing: ".7px" }}>Received</div>
+                  <div style={{ fontWeight: 700, fontFamily: "Syne", fontSize: 18, color: "var(--teal)", marginTop: 4 }}>{fmt(totalPaid)}</div>
+                  <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{totalIncome > 0 ? ((totalPaid / totalIncome) * 100).toFixed(0) : 0}% of total</div>
+                </div>
+                <div className="card-sm" style={{ background: totalPending > 0 ? "var(--red-dim)" : "var(--teal-dim)", borderColor: totalPending > 0 ? "var(--red)" : "var(--teal)" }}>
+                  <div style={{ fontSize: 10, color: totalPending > 0 ? "var(--red)" : "var(--teal)", textTransform: "uppercase", letterSpacing: ".7px" }}>Pending</div>
+                  <div style={{ fontWeight: 700, fontFamily: "Syne", fontSize: 18, color: totalPending > 0 ? "var(--red)" : "var(--teal)", marginTop: 4 }}>{fmt(totalPending)}</div>
+                  <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{totalPending > 0 ? "Outstanding balance" : "Fully settled"}</div>
+                </div>
+              </div>
+
+              {/* Contact info */}
+              {(c.mobile || c.address) && (
+                <div className="card-sm" style={{ background: "var(--bg3)" }}>
+                  <div style={{ display: "flex", gap: 20, fontSize: 12 }}>
+                    {c.mobile && <div><span style={{ color: "var(--text3)" }}>Mobile: </span><span style={{ fontWeight: 500 }}>{c.mobile}</span></div>}
+                    {c.address && <div><span style={{ color: "var(--text3)" }}>Address: </span><span style={{ fontWeight: 500 }}>{c.address}</span></div>}
+                  </div>
+                  {c.notes && <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 6 }}>{c.notes}</div>}
+                </div>
+              )}
+
+              {/* Trip-by-trip breakdown */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>All Trips ({sortedTrips.length} entries)</div>
+                {sortedTrips.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "var(--text3)", padding: "12px 0" }}>No trips recorded yet for this client.</div>
+                ) : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr><th>Date</th><th>Place</th><th>Item</th><th>Trips</th><th>Rate</th><th>Billed</th><th>Received</th><th>Pending</th></tr>
+                      </thead>
+                      <tbody>
+                        {sortedTrips.map(t => {
+                          const calc = store.calcTrip(t);
+                          return (
+                            <tr key={t.id}>
+                              <td>{t.date}</td>
+                              <td>{t.place}</td>
+                              <td><span className="badge badge-purple">{t.item}</span></td>
+                              <td className="td-bold">{t.tripCount}</td>
+                              <td>{fmt(t.ratePerTrip)}</td>
+                              <td className="td-accent">{fmt(calc.income)}</td>
+                              <td className="td-teal">{fmt(calc.clientPaid)}</td>
+                              <td className={calc.pending > 0 ? "td-red" : "td-teal"}>{fmt(calc.pending)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ fontWeight: 700, borderTop: "2px solid var(--border2)" }}>
+                          <td colSpan={3} style={{ color: "var(--text3)", fontSize: 11 }}>Total</td>
+                          <td className="td-bold">{totalTripCount}</td>
+                          <td></td>
+                          <td className="td-accent">{fmt(totalIncome)}</td>
+                          <td className="td-teal">{fmt(totalPaid)}</td>
+                          <td className={totalPending > 0 ? "td-red" : "td-teal"}>{fmt(totalPending)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {modal === "driver" && (
         <Modal title="Add Driver" onClose={() => { setModal(null); setForm({}); }}

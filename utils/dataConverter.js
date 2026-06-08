@@ -83,6 +83,16 @@ export const dbToApp = {
     month: db.month,
     createdAt: db.created_at,
   }),
+
+  client: (db) => ({
+    id: db.id,
+    firmId: db.firm_id,
+    name: db.name,
+    mobile: db.mobile || '',
+    address: db.address || '',
+    notes: db.notes || '',
+    createdAt: db.created_at,
+  }),
 };
 
 // Convert app record to database format
@@ -149,6 +159,14 @@ export const appToDb = {
     note: app.note || '',
     date: app.date,
     month: app.month,
+  }),
+
+  client: (app) => ({
+    firm_id: app.firmId,
+    name: app.name,
+    mobile: app.mobile || '',
+    address: app.address || '',
+    notes: app.notes || '',
   }),
 };
 
