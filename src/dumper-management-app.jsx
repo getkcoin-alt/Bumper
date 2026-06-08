@@ -1115,12 +1115,6 @@ function UserPanel({ store, user }) {
 
   // Trip form auto-calculation
   const tripIncome = (form.ratePerTrip || 0) * (form.tripCount || 0);
-  const tripExpenses = expenses.reduce((s, e) => {
-    const raw = form.expenseAmounts?.[e.id];
-    const amt = raw === "" || raw === undefined || raw === null ? 0 : Number(raw);
-    return s + (Number.isFinite(amt) ? amt : 0);
-  }, 0);
-  const tripProfit = tripIncome - tripExpenses;
 
   const submitTrip = () => {
     const selectedClient = clients.find(c => c.id === form.clientId);
@@ -1146,14 +1140,6 @@ function UserPanel({ store, user }) {
       return alert("Enter the driver's rate per trip.");
     }
 
-    // Collect per-expense amounts entered in the trip form.
-    const tripExpenses = {};
-    expenses.forEach(e => {
-      const raw = form.expenseAmounts?.[e.id];
-      const amt = raw === "" || raw === undefined || raw === null ? 0 : Number(raw);
-      tripExpenses[e.id] = Number.isFinite(amt) ? amt : 0;
-    });
-
     store.addTrip({
       firmId: user.firmId,
       clientName: resolvedClientName,
@@ -1168,7 +1154,7 @@ function UserPanel({ store, user }) {
       ratePerTrip: Number(form.ratePerTrip),
       date: form.date || today(),
       note: form.note || "",
-      expenses: tripExpenses,
+      expenses: {},
     });
     setModal(null);
     setForm({});
@@ -1323,9 +1309,9 @@ function UserPanel({ store, user }) {
                   <div className="stat-sub">{trips.length} trip entries</div>
                 </div>
                 <div className="stat-card red">
-                  <div className="stat-label">Total Expenses</div>
-                  <div className="stat-value">{fmt(summary.expense)}</div>
-                  <div className="stat-sub">All firm expenses</div>
+                  <div className="stat-label">Pending Payments</div>
+                  <div className="stat-value">{fmt(summary.totalPending)}</div>
+                  <div className="stat-sub">Uncollected from clients</div>
                 </div>
                 <div className="stat-card teal">
                   <div className="stat-label">My Net Profit</div>
@@ -1518,7 +1504,7 @@ function UserPanel({ store, user }) {
                       {/* ── Desktop table ── */}
                       <div className="trip-table table-wrap">
                         <table>
-                          <thead><tr><th>Date</th><th>Client</th><th>Place</th><th>Item</th><th>Driver</th><th>Vehicle</th><th>Trips</th><th>Rate</th><th>Income</th><th>Received</th><th>Pending</th><th>Expenses</th><th>Profit</th><th>Partner</th><th></th></tr></thead>
+                          <thead><tr><th>Date</th><th>Client</th><th>Place</th><th>Item</th><th>Driver</th><th>Vehicle</th><th>Trips</th><th>Rate</th><th>Income</th><th>Received</th><th>Pending</th><th>Profit</th><th>Partner</th><th></th></tr></thead>
                           <tbody>
                             {filtered.length === 0 && <tr><td colSpan={15}><div className="empty"><p>No trips match the filter.</p></div></td></tr>}
                             {filtered.map(t => {
@@ -1539,7 +1525,6 @@ function UserPanel({ store, user }) {
                                   <td className="td-accent">{fmt(c.income)}</td>
                                   <td className="td-teal">{fmt(c.clientPaid)}</td>
                                   <td className={c.pending > 0 ? "td-red" : "td-teal"}>{fmt(c.pending)}</td>
-                                  <td className="td-red">{fmt(c.totalExp)}</td>
                                   <td className={c.profit >= 0 ? "td-teal" : "td-red"}>
                                     {fmt(c.profit)}
                                     {isEdited && <span style={{ fontSize: 9, marginLeft: 4, opacity: 0.7 }}>✎</span>}
@@ -1820,8 +1805,8 @@ function UserPanel({ store, user }) {
           <>
             <div className="topbar">
               <div>
-                <h1 className="page-title">Expense Types</h1>
-                <p className="page-sub">Auto-applied to every trip for calculation</p>
+                <h1 className="page-title">Expense Categories</h1>
+                <p className="page-sub">Labels for tracking debits in Credit/Debit</p>
               </div>
               <button className="btn btn-primary" onClick={() => { setModal("expense"); setForm({ expenseRows: [{ label: "" }] }); }}>
                 {Icon.plus} Add Expense
@@ -2103,9 +2088,9 @@ function UserPanel({ store, user }) {
                   <div className="stat-sub">From {summary.trips} total trips</div>
                 </div>
                 <div className="stat-card red">
-                  <div className="stat-label">Total Expenses</div>
-                  <div className="stat-value">{fmt(summary.expense)}</div>
-                  <div className="stat-sub">{expenses.length} expense types applied</div>
+                  <div className="stat-label">Pending Payments</div>
+                  <div className="stat-value">{fmt(summary.totalPending)}</div>
+                  <div className="stat-sub">Uncollected from clients</div>
                 </div>
                 <div className="stat-card teal">
                   <div className="stat-label">Net Profit</div>
@@ -2133,20 +2118,21 @@ function UserPanel({ store, user }) {
                 </div>
 
                 <div className="card">
-                  <h3 style={{ fontSize: 14, marginBottom: 14 }}>Expense Breakdown</h3>
-                  {expenses.map(e => {
-                    const total = trips.reduce((s, t) => s + (e.perTrip ? e.amount * t.tripCount : e.amount), 0);
+                  <h3 style={{ fontSize: 14, marginBottom: 14 }}>Transaction Summary</h3>
+                  {(() => {
+                    const credits = transactions.filter(tx => tx.type === 'credit').reduce((s, tx) => s + tx.amount, 0);
+                    const debits = transactions.filter(tx => tx.type === 'debit').reduce((s, tx) => s + tx.amount, 0);
                     return (
-                      <div key={e.id} className="exp-row">
-                        <span className="er-label">{e.label} <span style={{ fontSize: 10, color: "var(--text3)" }}>({e.perTrip ? "per trip" : "fixed"})</span></span>
-                        <span className="er-val" style={{ color: "var(--red)" }}>{fmt(total)}</span>
-                      </div>
+                      <>
+                        <div className="exp-row"><span className="er-label">Total Credits</span><span className="er-val" style={{ color: "var(--teal)" }}>{fmt(credits)}</span></div>
+                        <div className="exp-row"><span className="er-label">Total Debits (Expenses)</span><span className="er-val" style={{ color: "var(--red)" }}>{fmt(debits)}</span></div>
+                        <div className="exp-row" style={{ borderTop: "1px solid var(--border2)", marginTop: 6, paddingTop: 12 }}>
+                          <span style={{ fontWeight: 600 }}>Net</span>
+                          <span style={{ fontWeight: 700, fontFamily: "Syne", color: credits - debits >= 0 ? "var(--teal)" : "var(--red)" }}>{fmt(credits - debits)}</span>
+                        </div>
+                      </>
                     );
-                  })}
-                  <div className="exp-row" style={{ borderTop: "1px solid var(--border2)", marginTop: 6, paddingTop: 12 }}>
-                    <span style={{ fontWeight: 600, color: "var(--text)" }}>Total Expenses</span>
-                    <span style={{ color: "var(--red)", fontWeight: 700, fontFamily: "Syne" }}>{fmt(summary.expense)}</span>
-                  </div>
+                  })()}
                 </div>
               </div>
 
@@ -2154,20 +2140,18 @@ function UserPanel({ store, user }) {
                 <h3 style={{ fontSize: 14, marginBottom: 14 }}>Partner-wise Contribution</h3>
                 <div className="table-wrap">
                   <table>
-                    <thead><tr><th>Partner</th><th>Entries</th><th>Trips</th><th>Income Logged</th><th>Expenses</th><th>Profit</th></tr></thead>
+                    <thead><tr><th>Partner</th><th>Entries</th><th>Trips</th><th>Income Logged</th><th>Profit</th></tr></thead>
                     <tbody>
                       {partners.map(p => {
                         const ptrips = trips.filter(t => t.partnerId === p.id);
                         const inc = ptrips.reduce((s, t) => s + store.calcTrip(t).income, 0);
-                        const exp = ptrips.reduce((s, t) => s + store.calcTrip(t).totalExp, 0);
-                        const prf = inc - exp;
+                        const prf = ptrips.reduce((s, t) => s + store.calcTrip(t).profit, 0);
                         return (
                           <tr key={p.id}>
                             <td className="td-bold">{p.name} {p.id === user.id && <span style={{ fontSize: 10, color: "var(--accent)" }}>(You)</span>}</td>
                             <td>{ptrips.length}</td>
                             <td>{ptrips.reduce((s, t) => s + t.tripCount, 0)}</td>
                             <td className="td-accent">{fmt(inc)}</td>
-                            <td className="td-red">{fmt(exp)}</td>
                             <td className={prf >= 0 ? "td-teal" : "td-red"}>{fmt(prf)}</td>
                           </tr>
                         );
@@ -2274,39 +2258,11 @@ function UserPanel({ store, user }) {
             {(form.tripCount > 0 && form.ratePerTrip > 0) && (
               <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 14 }}>
                 <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Auto Calculation</div>
-                <div className="exp-row"><span className="er-label">Income ({form.tripCount} trips × {fmt(form.ratePerTrip)})</span><span className="er-val">{fmt(tripIncome)}</span></div>
-                {expenses.map(e => (
-                  <div key={e.id} className="exp-row" style={{ alignItems: "flex-end" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4, width: "60%" }}>
-                      <span className="er-label">– {e.label}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="Amount"
-                        value={form.expenseAmounts?.[e.id] ?? ""}
-                        onChange={(ev) => {
-                          const val = ev.target.value;
-                          setForm(p => ({
-                            ...p,
-                            expenseAmounts: {
-                              ...(p.expenseAmounts || {}),
-                              [e.id]: val,
-                            },
-                          }));
-                        }}
-                        style={{ padding: '6px 10px' }}
-                      />
-                    </div>
-                    <span style={{ color: "var(--red)", fontSize: 13, fontWeight: 600 }}>
-                      {fmt(Number(form.expenseAmounts?.[e.id] || 0))}
-                    </span>
-                  </div>
-                ))}
-                <div style={{ borderTop: "1px solid var(--border2)", marginTop: 8, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>Net Profit</span>
-                  <span style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 16, color: tripProfit >= 0 ? "var(--teal)" : "var(--red)" }}>{fmt(tripProfit)}</span>
+                <div className="exp-row">
+                  <span className="er-label">Total Income ({form.tripCount} trips × {fmt(form.ratePerTrip)})</span>
+                  <span style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 16, color: "var(--teal)" }}>{fmt(tripIncome)}</span>
                 </div>
-                <div style={{ marginTop: 8, fontSize: 11, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
+                <div style={{ marginTop: 10, fontSize: 11, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
                   {Icon.lock} Entries cannot be edited or deleted after saving
                 </div>
               </div>
@@ -2760,12 +2716,6 @@ function UserPanel({ store, user }) {
               <div className="card-sm" style={{ background: "var(--bg3)" }}>
                 <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Financial Breakdown</div>
                 <div className="exp-row"><span className="er-label">Income</span><span className="er-val">{fmt(c.income)}</span></div>
-                {expenses.map(e => (
-                  <div key={e.id} className="exp-row">
-                    <span className="er-label">– {e.label}</span>
-                    <span style={{ color: "var(--red)", fontSize: 13 }}>– {fmt(e.perTrip ? e.amount * tripDetail.tripCount : e.amount)}</span>
-                  </div>
-                ))}
                 <div style={{ borderTop: "1px solid var(--border2)", marginTop: 8, paddingTop: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                     <span style={{ fontWeight: 600 }}>Net Profit {isEdited && <span style={{ fontSize: 10, color: "var(--accent)" }}>(Edited)</span>}</span>
