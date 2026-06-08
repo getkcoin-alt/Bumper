@@ -1741,6 +1741,20 @@ function UserPanel({ store, user }) {
                     <option value="">All Partners</option>
                     {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
+                  {(() => {
+                    const t = today();
+                    const yest = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+                    const isToday = txFilter.dateFrom === t && txFilter.dateTo === t;
+                    const isYest = txFilter.dateFrom === yest && txFilter.dateTo === yest;
+                    return (
+                      <>
+                        <button className={`btn btn-sm ${isToday ? "btn-primary" : "btn-outline"}`}
+                          onClick={() => setTxFilter(p => ({ ...p, dateFrom: isToday ? "" : t, dateTo: isToday ? "" : t }))}>Today</button>
+                        <button className={`btn btn-sm ${isYest ? "btn-primary" : "btn-outline"}`}
+                          onClick={() => setTxFilter(p => ({ ...p, dateFrom: isYest ? "" : yest, dateTo: isYest ? "" : yest }))}>Yesterday</button>
+                      </>
+                    );
+                  })()}
                   <input type="date" value={txFilter.dateFrom} onChange={e => setTxFilter(p => ({ ...p, dateFrom: e.target.value }))} title="From date" />
                   <input type="date" value={txFilter.dateTo} onChange={e => setTxFilter(p => ({ ...p, dateTo: e.target.value }))} title="To date" />
                   {(txFilter.type !== "all" || txFilter.partner || txFilter.dateFrom || txFilter.dateTo) && (
