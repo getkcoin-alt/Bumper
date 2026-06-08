@@ -81,6 +81,7 @@ export const dbToApp = {
     note: db.note || '',
     date: db.date,
     month: db.month,
+    recordedBy: db.recorded_by || null,
     createdAt: db.created_at,
   }),
 
@@ -159,6 +160,7 @@ export const appToDb = {
     note: app.note || '',
     date: app.date,
     month: app.month,
+    recorded_by: app.recordedBy || null,
   }),
 
   client: (app) => ({

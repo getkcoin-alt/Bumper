@@ -1230,6 +1230,7 @@ function UserPanel({ store, user }) {
       note: form.note?.trim() || "",
       date,
       month: date.slice(0, 7),
+      recordedBy: user.id,
     });
     setModal(null);
     setForm({});
@@ -1756,7 +1757,18 @@ function UserPanel({ store, user }) {
                   )}
                 </div>
                 {(() => {
-                  const filtered = [...transactions].reverse().filter(tx => {
+                  // Merge driver payments as debit rows
+                  const firmDriverIds = drivers.filter(d => d.firmId === user.firmId).map(d => d.id);
+                  const driverPayRows = driverPayments
+                    .filter(p => firmDriverIds.includes(p.driverId))
+                    .map(p => {
+                      const drv = drivers.find(d => d.id === p.driverId);
+                      return { _isDriverPay: true, id: p.id, date: p.date, type: 'debit', amount: p.amount,
+                        category: 'Driver Salary', description: `${drv?.name || ''}${p.note ? ' · ' + p.note : ''}`,
+                        partnerId: p.recordedBy || null, paymentMethod: null, referenceNumber: null };
+                    });
+                  const allRows = [...transactions, ...driverPayRows].sort((a, b) => b.date.localeCompare(a.date));
+                  const filtered = allRows.filter(tx => {
                     if (txFilter.type !== "all" && tx.type !== txFilter.type) return false;
                     if (txFilter.partner && tx.partnerId !== txFilter.partner) return false;
                     if (txFilter.dateFrom && tx.date < txFilter.dateFrom) return false;
@@ -1765,16 +1777,16 @@ function UserPanel({ store, user }) {
                   });
                   return (
                     <>
-                      <div className="filter-count" style={{ marginBottom: 10 }}>Showing {filtered.length} of {transactions.length} transactions</div>
+                      <div className="filter-count" style={{ marginBottom: 10 }}>Showing {filtered.length} of {allRows.length} entries</div>
                       <div className="table-wrap">
                         <table>
                           <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Category</th><th>Description</th><th>Payment</th><th>Reference</th><th>Partner</th></tr></thead>
                           <tbody>
-                            {filtered.length === 0 && <tr><td colSpan={8}><div className="empty"><p>No transactions match the filter.</p></div></td></tr>}
+                            {filtered.length === 0 && <tr><td colSpan={8}><div className="empty"><p>No entries match the filter.</p></div></td></tr>}
                             {filtered.map(tx => {
                               const by = partners.find(p => p.id === tx.partnerId);
                               return (
-                                <tr key={tx.id}>
+                                <tr key={tx.id} style={tx._isDriverPay ? { background: "rgba(var(--red-rgb,220,53,69),.04)" } : {}}>
                                   <td>{tx.date}</td>
                                   <td>
                                     {tx.type === 'credit' ? (
@@ -1794,7 +1806,7 @@ function UserPanel({ store, user }) {
                                   <td style={{ fontSize: 12, color: 'var(--text3)' }}>{tx.description || '—'}</td>
                                   <td><span className="badge badge-gray">{tx.paymentMethod || '—'}</span></td>
                                   <td style={{ fontSize: 11 }}>{tx.referenceNumber || '—'}</td>
-                                  <td><span className="badge badge-gray">{by?.name?.split(" ")[0]}</span></td>
+                                  <td><span className="badge badge-gray">{by?.name?.split(" ")[0] || '—'}</span></td>
                                 </tr>
                               );
                             })}
@@ -2622,11 +2634,19 @@ function UserPanel({ store, user }) {
                   <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Payment History</div>
                   <div className="table-wrap">
                     <table>
-                      <thead><tr><th>Date</th><th>Month</th><th>Amount</th><th>Note</th></tr></thead>
+                      <thead><tr><th>Date</th><th>Month</th><th>Amount</th><th>Note</th><th>Recorded By</th></tr></thead>
                       <tbody>
-                        {allPayments.map(p => (
-                          <tr key={p.id}><td>{p.date}</td><td>{p.month}</td><td className="td-teal">{fmt(p.amount)}</td><td style={{ fontSize: 11, color: "var(--text3)" }}>{p.note || "—"}</td></tr>
-                        ))}
+                        {allPayments.map(p => {
+                          const recorder = partners.find(pt => pt.id === p.recordedBy);
+                          return (
+                            <tr key={p.id}>
+                              <td>{p.date}</td><td>{p.month}</td>
+                              <td className="td-teal">{fmt(p.amount)}</td>
+                              <td style={{ fontSize: 11, color: "var(--text3)" }}>{p.note || "—"}</td>
+                              <td><span className="badge badge-gray">{recorder?.name?.split(" ")[0] || "—"}</span></td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

@@ -1,0 +1,1 @@
+ALTER TABLE driver_payments ADD COLUMN IF NOT EXISTS recorded_by UUID REFERENCES users(id) ON DELETE SET NULL;
