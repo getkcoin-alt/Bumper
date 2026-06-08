@@ -658,30 +658,31 @@ function useStore() {
   // Calculate totals for a trip
   const calcTrip = (trip) => {
     const income = trip.ratePerTrip * trip.tripCount;
-    // Per-trip driver cost is a direct deduction from each trip
-    const driverCost = (trip.driverTripRate || 0) * trip.tripCount;
-    const calculatedProfit = income - driverCost;
+    const calculatedProfit = income;
     const profit = trip.editedProfit !== undefined ? trip.editedProfit : calculatedProfit;
     const clientPaid = trip.clientPaid || 0;
     const pending = income - clientPaid;
-    return { income, driverCost, profit, calculatedProfit, clientPaid, pending };
+    return { income, profit, calculatedProfit, clientPaid, pending };
   };
 
   // Firm summary
   const firmSummary = (firmId) => {
     const ftrips = firmTrips(firmId);
     const ftransactions = firmTransactions(firmId);
-    
+    const firmDriverIds = drivers.filter(d => d.firmId === firmId).map(d => d.id);
+    const driverPaymentsPaid = driverPayments
+      .filter(p => firmDriverIds.includes(p.driverId))
+      .reduce((s, p) => s + p.amount, 0);
+
     const tripSummary = ftrips.reduce((acc, t) => {
       const c = calcTrip(t);
       acc.income += c.income;
-      acc.driverCost += c.driverCost;
       acc.profit += c.profit;
       acc.trips += t.tripCount;
       acc.totalPending += c.pending;
       return acc;
-    }, { income: 0, driverCost: 0, profit: 0, trips: 0, totalPending: 0 });
-    
+    }, { income: 0, profit: 0, trips: 0, totalPending: 0 });
+
     const transactionSummary = ftransactions.reduce((acc, tx) => {
       if (tx.type === 'credit') {
         acc.credits += tx.amount;
@@ -690,9 +691,11 @@ function useStore() {
       }
       return acc;
     }, { credits: 0, debits: 0 });
-    
+
     return {
       ...tripSummary,
+      driverPaymentsPaid,
+      netProfit: tripSummary.profit - driverPaymentsPaid,
       credits: transactionSummary.credits,
       debits: transactionSummary.debits,
       netBalance: transactionSummary.credits - transactionSummary.debits,
@@ -2099,8 +2102,8 @@ function UserPanel({ store, user }) {
                 </div>
                 <div className="stat-card teal">
                   <div className="stat-label">Net Profit</div>
-                  <div className="stat-value">{fmt(summary.profit)}</div>
-                  <div className="stat-sub">{summary.income > 0 ? ((summary.profit / summary.income) * 100).toFixed(1) : 0}% margin</div>
+                  <div className="stat-value">{fmt(summary.netProfit)}</div>
+                  <div className="stat-sub">After ₹{fmt(summary.driverPaymentsPaid)} driver payments</div>
                 </div>
               </div>
 
@@ -2123,21 +2126,16 @@ function UserPanel({ store, user }) {
                 </div>
 
                 <div className="card">
-                  <h3 style={{ fontSize: 14, marginBottom: 14 }}>Transaction Summary</h3>
-                  {(() => {
-                    const credits = transactions.filter(tx => tx.type === 'credit').reduce((s, tx) => s + tx.amount, 0);
-                    const debits = transactions.filter(tx => tx.type === 'debit').reduce((s, tx) => s + tx.amount, 0);
-                    return (
-                      <>
-                        <div className="exp-row"><span className="er-label">Total Credits</span><span className="er-val" style={{ color: "var(--teal)" }}>{fmt(credits)}</span></div>
-                        <div className="exp-row"><span className="er-label">Total Debits (Expenses)</span><span className="er-val" style={{ color: "var(--red)" }}>{fmt(debits)}</span></div>
-                        <div className="exp-row" style={{ borderTop: "1px solid var(--border2)", marginTop: 6, paddingTop: 12 }}>
-                          <span style={{ fontWeight: 600 }}>Net</span>
-                          <span style={{ fontWeight: 700, fontFamily: "Syne", color: credits - debits >= 0 ? "var(--teal)" : "var(--red)" }}>{fmt(credits - debits)}</span>
-                        </div>
-                      </>
-                    );
-                  })()}
+                  <h3 style={{ fontSize: 14, marginBottom: 14 }}>Profit Summary</h3>
+                  <div className="exp-row"><span className="er-label">Gross Income (trips)</span><span className="er-val">{fmt(summary.income)}</span></div>
+                  <div className="exp-row">
+                    <span className="er-label">– Driver Payments Made</span>
+                    <span style={{ color: "var(--red)", fontSize: 13 }}>– {fmt(summary.driverPaymentsPaid)}</span>
+                  </div>
+                  <div className="exp-row" style={{ borderTop: "1px solid var(--border2)", marginTop: 6, paddingTop: 12 }}>
+                    <span style={{ fontWeight: 600 }}>Net Profit</span>
+                    <span style={{ fontWeight: 700, fontFamily: "Syne", color: summary.netProfit >= 0 ? "var(--teal)" : "var(--red)" }}>{fmt(summary.netProfit)}</span>
+                  </div>
                 </div>
               </div>
 
@@ -2260,34 +2258,18 @@ function UserPanel({ store, user }) {
             <div><label>Note (optional)</label><input placeholder="Any note for this trip" value={form.note || ""} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} /></div>
 
             {/* Auto calculation */}
-            {(form.tripCount > 0 && form.ratePerTrip > 0) && (() => {
-              const selDriver = drivers.find(d => d.id === form.driverId);
-              const isPerTrip = selDriver?.salaryType === "per_trip";
-              const driverCost = isPerTrip ? (Number(form.driverTripRate) || 0) * Number(form.tripCount) : 0;
-              const netProfit = tripIncome - driverCost;
-              return (
-                <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 14 }}>
-                  <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Auto Calculation</div>
-                  <div className="exp-row">
-                    <span className="er-label">Income ({form.tripCount} trips × {fmt(form.ratePerTrip)})</span>
-                    <span className="er-val">{fmt(tripIncome)}</span>
-                  </div>
-                  {driverCost > 0 && (
-                    <div className="exp-row">
-                      <span className="er-label">– Driver ({selDriver.name}, {form.tripCount} × {fmt(form.driverTripRate)})</span>
-                      <span style={{ color: "var(--red)", fontSize: 13 }}>– {fmt(driverCost)}</span>
-                    </div>
-                  )}
-                  <div style={{ borderTop: "1px solid var(--border2)", marginTop: 8, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontWeight: 600, fontSize: 13 }}>Net Profit</span>
-                    <span style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 16, color: netProfit >= 0 ? "var(--teal)" : "var(--red)" }}>{fmt(netProfit)}</span>
-                  </div>
-                  <div style={{ marginTop: 8, fontSize: 11, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
-                    {Icon.lock} Entries cannot be edited or deleted after saving
-                  </div>
+            {(form.tripCount > 0 && form.ratePerTrip > 0) && (
+              <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 14 }}>
+                <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Auto Calculation</div>
+                <div className="exp-row">
+                  <span className="er-label">Total Income ({form.tripCount} trips × {fmt(form.ratePerTrip)})</span>
+                  <span style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 16, color: "var(--teal)" }}>{fmt(tripIncome)}</span>
                 </div>
-              );
-            })()}
+                <div style={{ marginTop: 10, fontSize: 11, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
+                  {Icon.lock} Entries cannot be edited or deleted after saving
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}
@@ -2737,12 +2719,6 @@ function UserPanel({ store, user }) {
               <div className="card-sm" style={{ background: "var(--bg3)" }}>
                 <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Financial Breakdown</div>
                 <div className="exp-row"><span className="er-label">Income</span><span className="er-val">{fmt(c.income)}</span></div>
-                {c.driverCost > 0 && (
-                  <div className="exp-row">
-                    <span className="er-label">– Driver ({tripDetail.driverName})</span>
-                    <span style={{ color: "var(--red)", fontSize: 13 }}>– {fmt(c.driverCost)}</span>
-                  </div>
-                )}
                 <div style={{ borderTop: "1px solid var(--border2)", marginTop: 8, paddingTop: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                     <span style={{ fontWeight: 600 }}>Net Profit {isEdited && <span style={{ fontSize: 10, color: "var(--accent)" }}>(Edited)</span>}</span>
