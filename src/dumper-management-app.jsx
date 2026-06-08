@@ -1123,13 +1123,16 @@ function UserPanel({ store, user }) {
   const tripProfit = tripIncome - tripExpenses;
 
   const submitTrip = () => {
+    const selectedClient = clients.find(c => c.id === form.clientId);
+    const resolvedClientName = selectedClient ? selectedClient.name : (form.clientName?.trim() || "");
+
     const selectedDriver = drivers.find(d => d.id === form.driverId);
     const resolvedDriverName = selectedDriver ? selectedDriver.name : (form.driverName?.trim() || "");
     const resolvedDriverId = selectedDriver ? selectedDriver.id : null;
     const isPerTripDriver = selectedDriver?.salaryType === "per_trip";
 
     if (
-      !form.clientName?.trim() ||
+      !resolvedClientName ||
       !form.partnerId ||
       !form.vehicleId ||
       !resolvedDriverName ||
@@ -1153,7 +1156,7 @@ function UserPanel({ store, user }) {
 
     store.addTrip({
       firmId: user.firmId,
-      clientName: form.clientName,
+      clientName: resolvedClientName,
       partnerId: form.partnerId,
       driverId: resolvedDriverId,
       driverName: resolvedDriverName,
@@ -2184,7 +2187,26 @@ function UserPanel({ store, user }) {
           footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitTrip}>{Icon.lock} Lock & Save</button></>}>
           <div className="form-grid">
             <div className="fg2">
-              <div><label>Client Name *</label><input placeholder="Client / builder name" value={form.clientName || ""} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} /></div>
+              <div>
+                <label>Client Name *</label>
+                {clients.length > 0 ? (
+                  <>
+                    <select value={form.clientId || ""} onChange={e => {
+                      const sel = clients.find(c => c.id === e.target.value);
+                      setForm(p => ({ ...p, clientId: e.target.value, clientName: sel ? sel.name : "" }));
+                    }}>
+                      <option value="">— Select Client —</option>
+                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      <option value="__manual__">Type manually…</option>
+                    </select>
+                    {form.clientId === "__manual__" && (
+                      <input style={{ marginTop: 6 }} placeholder="Client / builder name" value={form.clientName || ""} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} />
+                    )}
+                  </>
+                ) : (
+                  <input placeholder="Client / builder name" value={form.clientName || ""} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} />
+                )}
+              </div>
               <div><label>Date *</label><input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} /></div>
             </div>
             <div className="fg2">
