@@ -2189,22 +2189,19 @@ function UserPanel({ store, user }) {
             <div className="fg2">
               <div>
                 <label>Client Name *</label>
-                {clients.length > 0 ? (
-                  <>
-                    <select value={form.clientId || ""} onChange={e => {
-                      const sel = clients.find(c => c.id === e.target.value);
-                      setForm(p => ({ ...p, clientId: e.target.value, clientName: sel ? sel.name : "" }));
-                    }}>
-                      <option value="">— Select Client —</option>
-                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      <option value="__manual__">Type manually…</option>
-                    </select>
-                    {form.clientId === "__manual__" && (
-                      <input style={{ marginTop: 6 }} placeholder="Client / builder name" value={form.clientName || ""} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} />
-                    )}
-                  </>
-                ) : (
-                  <input placeholder="Client / builder name" value={form.clientName || ""} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} />
+                <select value={form.clientId || ""} onChange={e => {
+                  const sel = clients.find(c => c.id === e.target.value);
+                  setForm(p => ({ ...p, clientId: e.target.value, clientName: sel ? sel.name : "" }));
+                }}>
+                  <option value="">— Select Client —</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="__manual__">Type name manually…</option>
+                </select>
+                {form.clientId === "__manual__" && (
+                  <input style={{ marginTop: 6 }} placeholder="Client / builder name" value={form.clientName || ""} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} />
+                )}
+                {clients.length === 0 && form.clientId !== "__manual__" && (
+                  <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>No clients yet — select "Type name manually…" or add clients in the Clients tab first.</div>
                 )}
               </div>
               <div><label>Date *</label><input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} /></div>
