@@ -1758,9 +1758,8 @@ function UserPanel({ store, user }) {
                 </div>
                 {(() => {
                   // Merge driver payments as debit rows
-                  const firmDriverIds = drivers.filter(d => d.firmId === user.firmId).map(d => d.id);
-                  const driverPayRows = driverPayments
-                    .filter(p => firmDriverIds.includes(p.driverId))
+                  const allDriverPayments = drivers.flatMap(d => store.firmDriverPayments(d.id));
+                  const driverPayRows = allDriverPayments
                     .map(p => {
                       const drv = drivers.find(d => d.id === p.driverId);
                       return { _isDriverPay: true, id: p.id, date: p.date, type: 'debit', amount: p.amount,
