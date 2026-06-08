@@ -48,6 +48,7 @@ export const dbToApp = {
     partnerId: db.partner_id,
     driverId: db.driver_id || null,
     driverName: db.driver_name,
+    driverTripRate: Number(db.driver_trip_rate || 0),
     vehicleId: db.vehicle_id,
     place: db.place,
     item: db.item,
@@ -80,6 +81,16 @@ export const dbToApp = {
     note: db.note || '',
     date: db.date,
     month: db.month,
+    createdAt: db.created_at,
+  }),
+
+  client: (db) => ({
+    id: db.id,
+    firmId: db.firm_id,
+    name: db.name,
+    mobile: db.mobile || '',
+    address: db.address || '',
+    notes: db.notes || '',
     createdAt: db.created_at,
   }),
 };
@@ -120,6 +131,7 @@ export const appToDb = {
     partner_id: app.partnerId,
     driver_id: app.driverId || null,
     driver_name: app.driverName,
+    driver_trip_rate: app.driverTripRate || 0,
     vehicle_id: app.vehicleId,
     place: app.place,
     item: app.item,
@@ -147,6 +159,14 @@ export const appToDb = {
     note: app.note || '',
     date: app.date,
     month: app.month,
+  }),
+
+  client: (app) => ({
+    firm_id: app.firmId,
+    name: app.name,
+    mobile: app.mobile || '',
+    address: app.address || '',
+    notes: app.notes || '',
   }),
 };
 

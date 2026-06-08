@@ -314,6 +314,7 @@ function useStore() {
   const [transactions, setTransactions] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [driverPayments, setDriverPayments] = useState([]);
+  const [clients, setClients] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -397,6 +398,12 @@ function useStore() {
       if (driverPaymentsError) throw driverPaymentsError;
       setDriverPayments((driverPaymentsData || []).map(dbToApp.driverPayment));
 
+      // Load clients
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('clients').select('*').order('name', { ascending: true });
+      if (clientsError) throw clientsError;
+      setClients((clientsData || []).map(dbToApp.client));
+
     } catch (error) {
       console.error('Error loading data:', error);
       alert('Failed to load data from database. Check console for details.');
@@ -412,6 +419,7 @@ function useStore() {
   const firmTransactions = (firmId) => transactions.filter(tx => tx.firmId === firmId);
   const firmDrivers = (firmId) => drivers.filter(d => d.firmId === firmId);
   const firmDriverPayments = (driverId) => driverPayments.filter(p => p.driverId === driverId);
+  const firmClients = (firmId) => clients.filter(c => c.firmId === firmId);
 
   const addFirm = async (name) => {
     try {
@@ -588,13 +596,39 @@ function useStore() {
     }
   };
 
+  const addClient = async (data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('clients').insert([appToDb.client(data)]).select().single();
+      if (error) throw error;
+      const newClient = dbToApp.client(dbData);
+      setClients(p => [...p, newClient].sort((a, b) => a.name.localeCompare(b.name)));
+      return newClient;
+    } catch (error) {
+      console.error('Error adding client:', error);
+      alert('Failed to add client');
+      throw error;
+    }
+  };
+
+  const updateClient = async (id, data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('clients').update(appToDb.client(data)).eq('id', id).select().single();
+      if (error) throw error;
+      const updated = dbToApp.client(dbData);
+      setClients(p => p.map(c => c.id === id ? updated : c));
+    } catch (error) {
+      console.error('Error updating client:', error);
+      alert('Failed to update client');
+      throw error;
+    }
+  };
+
   const addDriver = async (data) => {
     try {
       const { data: dbData, error } = await supabase
-        .from('drivers')
-        .insert([appToDb.driver(data)])
-        .select()
-        .single();
+        .from('drivers').insert([appToDb.driver(data)]).select().single();
       if (error) throw error;
       const newDriver = dbToApp.driver(dbData);
       setDrivers(p => [newDriver, ...p]);
@@ -609,10 +643,7 @@ function useStore() {
   const addDriverPayment = async (data) => {
     try {
       const { data: dbData, error } = await supabase
-        .from('driver_payments')
-        .insert([appToDb.driverPayment(data)])
-        .select()
-        .single();
+        .from('driver_payments').insert([appToDb.driverPayment(data)]).select().single();
       if (error) throw error;
       const newPayment = dbToApp.driverPayment(dbData);
       setDriverPayments(p => [newPayment, ...p]);
@@ -686,11 +717,12 @@ function useStore() {
       await supabase.from('vehicles').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('driver_payments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('drivers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('clients').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('users').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('firms').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       setFirms([]); setUsers([]); setVehicles([]);
       setExpenses([]); setTrips([]); setTransactions([]);
-      setDrivers([]); setDriverPayments([]);
+      setDrivers([]); setDriverPayments([]); setClients([]);
     } catch (error) {
       console.error('Error resetting data:', error);
       alert('Failed to reset data: ' + error.message);
@@ -699,10 +731,10 @@ function useStore() {
   };
 
   return {
-    firms, users, vehicles, expenses, trips, transactions, drivers, driverPayments, currentUser, setCurrentUser, loading,
+    firms, users, vehicles, expenses, trips, transactions, drivers, driverPayments, clients, currentUser, setCurrentUser, loading,
 
-    firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions, firmDrivers, firmDriverPayments,
-    addFirm, addUser, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction, addDriver, addDriverPayment,
+    firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions, firmDrivers, firmDriverPayments, firmClients,
+    addFirm, addUser, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction, addDriver, addDriverPayment, addClient, updateClient,
     calcTrip, firmSummary, resetAllData,
   };
 }
@@ -1016,6 +1048,7 @@ function UserPanel({ store, user }) {
   const [form, setForm] = useState({});
   const [tripDetail, setTripDetail] = useState(null);
   const [driverDetail, setDriverDetail] = useState(null);
+  const [clientDetail, setClientDetail] = useState(null);
   const [editingProfit, setEditingProfit] = useState(false);
   const [editedProfitValue, setEditedProfitValue] = useState("");
   const [editingClientPaid, setEditingClientPaid] = useState(false);
@@ -1034,11 +1067,13 @@ function UserPanel({ store, user }) {
   const trips = store.firmTrips(user.firmId);
   const transactions = store.firmTransactions(user.firmId);
   const drivers = store.firmDrivers(user.firmId);
+  const clients = store.firmClients(user.firmId);
   const summary = store.firmSummary(user.firmId);
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: Icon.dashboard },
     { id: "trips", label: "Trips", icon: Icon.trips },
+    { id: "clients", label: "Clients", icon: Icon.people },
     { id: "transactions", label: "Credit/Debit", icon: Icon.wallet },
     { id: "expenses", label: "Expenses", icon: Icon.expense },
     { id: "vehicles", label: "Vehicles", icon: Icon.vehicle },
@@ -1088,12 +1123,16 @@ function UserPanel({ store, user }) {
   const tripProfit = tripIncome - tripExpenses;
 
   const submitTrip = () => {
+    const selectedClient = clients.find(c => c.id === form.clientId);
+    const resolvedClientName = selectedClient ? selectedClient.name : (form.clientName?.trim() || "");
+
     const selectedDriver = drivers.find(d => d.id === form.driverId);
     const resolvedDriverName = selectedDriver ? selectedDriver.name : (form.driverName?.trim() || "");
     const resolvedDriverId = selectedDriver ? selectedDriver.id : null;
+    const isPerTripDriver = selectedDriver?.salaryType === "per_trip";
 
     if (
-      !form.clientName?.trim() ||
+      !resolvedClientName ||
       !form.partnerId ||
       !form.vehicleId ||
       !resolvedDriverName ||
@@ -1102,6 +1141,10 @@ function UserPanel({ store, user }) {
       !form.tripCount ||
       !form.ratePerTrip
     ) return alert("Fill all required fields.");
+
+    if (isPerTripDriver && (!form.driverTripRate || Number(form.driverTripRate) <= 0)) {
+      return alert("Enter the driver's rate per trip.");
+    }
 
     // Collect per-expense amounts entered in the trip form.
     const tripExpenses = {};
@@ -1113,10 +1156,11 @@ function UserPanel({ store, user }) {
 
     store.addTrip({
       firmId: user.firmId,
-      clientName: form.clientName,
+      clientName: resolvedClientName,
       partnerId: form.partnerId,
       driverId: resolvedDriverId,
       driverName: resolvedDriverName,
+      driverTripRate: isPerTripDriver ? Number(form.driverTripRate) : 0,
       vehicleId: form.vehicleId,
       place: form.place,
       item: form.item,
@@ -1199,17 +1243,34 @@ function UserPanel({ store, user }) {
     if (!form.amount || Number(form.amount) <= 0) return alert("Enter a valid payment amount.");
     if (!form.driverPaymentId) return;
     const date = form.date || today();
-    const month = date.slice(0, 7);
     await store.addDriverPayment({
       driverId: form.driverPaymentId,
       firmId: user.firmId,
       amount: Number(form.amount),
       note: form.note?.trim() || "",
       date,
-      month,
+      month: date.slice(0, 7),
     });
     setModal(null);
     setForm({});
+  };
+
+  const submitClient = async () => {
+    if (!form.name?.trim()) return alert("Client name is required.");
+    if (form.editClientId) {
+      await store.updateClient(form.editClientId, { firmId: user.firmId, name: form.name.trim(), mobile: form.mobile?.trim() || "", address: form.address?.trim() || "", notes: form.notes?.trim() || "" });
+    } else {
+      await store.addClient({ firmId: user.firmId, name: form.name.trim(), mobile: form.mobile?.trim() || "", address: form.address?.trim() || "", notes: form.notes?.trim() || "" });
+    }
+    setModal(null);
+    setForm({});
+  };
+
+  const importClientsFromTrips = async () => {
+    const existingNames = new Set(clients.map(c => c.name.toLowerCase().trim()));
+    const toImport = [...new Set(trips.map(t => t.clientName.trim()))].filter(n => !existingNames.has(n.toLowerCase()));
+    if (!toImport.length) return alert("All trip clients are already in your clients list.");
+    await Promise.all(toImport.map(name => store.addClient({ firmId: user.firmId, name, mobile: "", address: "", notes: "" })));
   };
 
   return (
@@ -1535,6 +1596,93 @@ function UserPanel({ store, user }) {
           </>
         )}
 
+        {tab === "clients" && (() => {
+          const unlinked = trips.filter(t => !clients.some(c => c.name.toLowerCase() === t.clientName.toLowerCase()));
+          return (
+            <>
+              <div className="topbar">
+                <div>
+                  <h1 className="page-title">Clients</h1>
+                  <p className="page-sub">{clients.length} clients · Complete business record per client</p>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {unlinked.length > 0 && (
+                    <button className="btn btn-outline" onClick={importClientsFromTrips}>
+                      ↓ Import from trips
+                    </button>
+                  )}
+                  <button className="btn btn-primary" onClick={() => { setModal("client"); setForm({}); }}>
+                    {Icon.plus} Add Client
+                  </button>
+                </div>
+              </div>
+              <div className="content">
+                {clients.length === 0 && (
+                  <div className="card">
+                    <div className="empty">
+                      <p>No clients yet.</p>
+                      {trips.length > 0 && (
+                        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={importClientsFromTrips}>
+                          ↓ Import clients from existing trips
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div className="grid g3">
+                  {clients.map(c => {
+                    const cTrips = trips.filter(t => t.clientName.toLowerCase() === c.name.toLowerCase());
+                    const totalIncome = cTrips.reduce((s, t) => s + store.calcTrip(t).income, 0);
+                    const totalPaid = cTrips.reduce((s, t) => s + store.calcTrip(t).clientPaid, 0);
+                    const totalPending = cTrips.reduce((s, t) => s + store.calcTrip(t).pending, 0);
+                    const totalTripCount = cTrips.reduce((s, t) => s + t.tripCount, 0);
+                    return (
+                      <div key={c.id} className="card">
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ width: 40, height: 40, background: "var(--accent-dim)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontFamily: "Syne", fontWeight: 700, color: "var(--accent)" }}>
+                              {c.name[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, fontFamily: "Syne", fontSize: 14 }}>{c.name}</div>
+                              <div style={{ fontSize: 11, color: "var(--text3)" }}>{c.mobile || "—"}</div>
+                            </div>
+                          </div>
+                          <button className="btn btn-outline btn-sm" onClick={() => { setModal("client"); setForm({ editClientId: c.id, name: c.name, mobile: c.mobile, address: c.address, notes: c.notes }); }}>✎ Edit</button>
+                        </div>
+                        {c.address && <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 8 }}>{c.address}</div>}
+                        <hr className="divider" />
+                        <div style={{ display: "grid", gap: 6, fontSize: 12, marginBottom: 12 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--text3)" }}>Trip entries</span>
+                            <span style={{ color: "var(--text)", fontWeight: 500 }}>{cTrips.length} ({totalTripCount} trips)</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--text3)" }}>Total billed</span>
+                            <span style={{ color: "var(--accent)", fontWeight: 600 }}>{fmt(totalIncome)}</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--text3)" }}>Received</span>
+                            <span style={{ color: "var(--teal)", fontWeight: 600 }}>{fmt(totalPaid)}</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 2 }}>
+                            <span style={{ fontWeight: 600 }}>Pending</span>
+                            <span style={{ color: totalPending > 0 ? "var(--red)" : "var(--teal)", fontWeight: 700, fontFamily: "Syne" }}>{fmt(totalPending)}</span>
+                          </div>
+                        </div>
+                        <button className="btn btn-outline btn-sm" style={{ width: "100%", justifyContent: "center" }}
+                          onClick={() => setClientDetail({ client: c, cTrips, totalIncome, totalPaid, totalPending, totalTripCount })}>
+                          View Balance Sheet
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          );
+        })()}
+
         {tab === "transactions" && (
           <>
             <div className="topbar">
@@ -1840,7 +1988,7 @@ function UserPanel({ store, user }) {
                   const driverTrips = trips.filter(t => t.driverId === d.id && t.date.startsWith(thisMonth));
                   const monthTrips = driverTrips.reduce((s, t) => s + t.tripCount, 0);
                   const salaryDue = d.salaryType === "per_trip"
-                    ? d.salaryAmount * monthTrips
+                    ? driverTrips.reduce((s, t) => s + (t.driverTripRate || 0) * t.tripCount, 0)
                     : d.salaryAmount;
                   const payments = store.firmDriverPayments(d.id).filter(p => p.month === thisMonth);
                   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
@@ -1870,7 +2018,7 @@ function UserPanel({ store, user }) {
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span style={{ color: "var(--text3)" }}>
-                            {d.salaryType === "per_trip" ? `Salary (${fmt(d.salaryAmount)}/trip)` : "Monthly salary"}
+                            {d.salaryType === "per_trip" ? "Salary (from trips)" : "Monthly salary"}
                           </span>
                           <span style={{ color: "var(--accent)", fontWeight: 600 }}>{fmt(salaryDue)}</span>
                         </div>
@@ -2039,7 +2187,23 @@ function UserPanel({ store, user }) {
           footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitTrip}>{Icon.lock} Lock & Save</button></>}>
           <div className="form-grid">
             <div className="fg2">
-              <div><label>Client Name *</label><input placeholder="Client / builder name" value={form.clientName || ""} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} /></div>
+              <div>
+                <label>Client Name *</label>
+                <select value={form.clientId || ""} onChange={e => {
+                  const sel = clients.find(c => c.id === e.target.value);
+                  setForm(p => ({ ...p, clientId: e.target.value, clientName: sel ? sel.name : "" }));
+                }}>
+                  <option value="">— Select Client —</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="__manual__">Type name manually…</option>
+                </select>
+                {form.clientId === "__manual__" && (
+                  <input style={{ marginTop: 6 }} placeholder="Client / builder name" value={form.clientName || ""} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} />
+                )}
+                {clients.length === 0 && form.clientId !== "__manual__" && (
+                  <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>No clients yet — select "Type name manually…" or add clients in the Clients tab first.</div>
+                )}
+              </div>
               <div><label>Date *</label><input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} /></div>
             </div>
             <div className="fg2">
@@ -2053,14 +2217,32 @@ function UserPanel({ store, user }) {
                 <label>Driver *</label>
                 {drivers.length > 0 ? (
                   <>
-                    <select value={form.driverId || ""} onChange={e => setForm(p => ({ ...p, driverId: e.target.value, driverName: "" }))}>
+                    <select value={form.driverId || ""} onChange={e => setForm(p => ({ ...p, driverId: e.target.value, driverName: "", driverTripRate: "" }))}>
                       <option value="">— Select Driver —</option>
-                      {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      {drivers.map(d => <option key={d.id} value={d.id}>{d.name} ({d.salaryType === "salaried" ? "Salaried" : "Per Trip"})</option>)}
                       <option value="__manual__">Type name manually…</option>
                     </select>
                     {form.driverId === "__manual__" && (
                       <input style={{ marginTop: 6 }} placeholder="Driver's name" value={form.driverName || ""} onChange={e => setForm(p => ({ ...p, driverName: e.target.value }))} />
                     )}
+                    {(() => {
+                      const sel = drivers.find(d => d.id === form.driverId);
+                      if (!sel) return null;
+                      if (sel.salaryType === "salaried") {
+                        return (
+                          <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "var(--accent-dim)", borderRadius: "var(--radius)", fontSize: 12 }}>
+                            <span style={{ color: "var(--accent)", fontWeight: 600 }}>Salaried</span>
+                            <span style={{ color: "var(--text3)" }}>— fixed monthly salary, tracked separately</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div style={{ marginTop: 8 }}>
+                          <label style={{ fontSize: 11 }}>Driver Rate per Trip (₹) *</label>
+                          <input type="number" min="0" placeholder="e.g. 300" value={form.driverTripRate || ""} onChange={e => setForm(p => ({ ...p, driverTripRate: e.target.value }))} />
+                        </div>
+                      );
+                    })()}
                   </>
                 ) : (
                   <input placeholder="Driver's name" value={form.driverName || ""} onChange={e => setForm(p => ({ ...p, driverName: e.target.value }))} />
@@ -2279,6 +2461,103 @@ function UserPanel({ store, user }) {
         </Modal>
       )}
 
+      {modal === "client" && (
+        <Modal title={form.editClientId ? "Edit Client" : "Add Client"} onClose={() => { setModal(null); setForm({}); }}
+          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitClient}>{form.editClientId ? "Save Changes" : "Add Client"}</button></>}>
+          <div className="form-grid">
+            <div className="fg2">
+              <div><label>Client / Company Name *</label><input placeholder="e.g. Raj Construction" value={form.name || ""} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+              <div><label>Mobile</label><input placeholder="Contact number (optional)" value={form.mobile || ""} onChange={e => setForm(p => ({ ...p, mobile: e.target.value }))} /></div>
+            </div>
+            <div><label>Address</label><input placeholder="Site / office address (optional)" value={form.address || ""} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} /></div>
+            <div><label>Notes</label><input placeholder="Any notes about this client (optional)" value={form.notes || ""} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} /></div>
+          </div>
+        </Modal>
+      )}
+
+      {clientDetail && (() => {
+        const { client: c, cTrips, totalIncome, totalPaid, totalPending, totalTripCount } = clientDetail;
+        const sortedTrips = [...cTrips].sort((a, b) => b.date.localeCompare(a.date));
+        return (
+          <Modal title={`${c.name} — Balance Sheet`} onClose={() => setClientDetail(null)}>
+            <div style={{ display: "grid", gap: 14 }}>
+              {/* Summary cards */}
+              <div className="grid g3" style={{ gap: 10 }}>
+                <div className="card-sm" style={{ background: "var(--accent-dim)", borderColor: "var(--accent)" }}>
+                  <div style={{ fontSize: 10, color: "var(--accent)", textTransform: "uppercase", letterSpacing: ".7px" }}>Total Billed</div>
+                  <div style={{ fontWeight: 700, fontFamily: "Syne", fontSize: 18, color: "var(--accent)", marginTop: 4 }}>{fmt(totalIncome)}</div>
+                  <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{cTrips.length} entries · {totalTripCount} trips</div>
+                </div>
+                <div className="card-sm" style={{ background: "var(--teal-dim)", borderColor: "var(--teal)" }}>
+                  <div style={{ fontSize: 10, color: "var(--teal)", textTransform: "uppercase", letterSpacing: ".7px" }}>Received</div>
+                  <div style={{ fontWeight: 700, fontFamily: "Syne", fontSize: 18, color: "var(--teal)", marginTop: 4 }}>{fmt(totalPaid)}</div>
+                  <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{totalIncome > 0 ? ((totalPaid / totalIncome) * 100).toFixed(0) : 0}% of total</div>
+                </div>
+                <div className="card-sm" style={{ background: totalPending > 0 ? "var(--red-dim)" : "var(--teal-dim)", borderColor: totalPending > 0 ? "var(--red)" : "var(--teal)" }}>
+                  <div style={{ fontSize: 10, color: totalPending > 0 ? "var(--red)" : "var(--teal)", textTransform: "uppercase", letterSpacing: ".7px" }}>Pending</div>
+                  <div style={{ fontWeight: 700, fontFamily: "Syne", fontSize: 18, color: totalPending > 0 ? "var(--red)" : "var(--teal)", marginTop: 4 }}>{fmt(totalPending)}</div>
+                  <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{totalPending > 0 ? "Outstanding balance" : "Fully settled"}</div>
+                </div>
+              </div>
+
+              {/* Contact info */}
+              {(c.mobile || c.address) && (
+                <div className="card-sm" style={{ background: "var(--bg3)" }}>
+                  <div style={{ display: "flex", gap: 20, fontSize: 12 }}>
+                    {c.mobile && <div><span style={{ color: "var(--text3)" }}>Mobile: </span><span style={{ fontWeight: 500 }}>{c.mobile}</span></div>}
+                    {c.address && <div><span style={{ color: "var(--text3)" }}>Address: </span><span style={{ fontWeight: 500 }}>{c.address}</span></div>}
+                  </div>
+                  {c.notes && <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 6 }}>{c.notes}</div>}
+                </div>
+              )}
+
+              {/* Trip-by-trip breakdown */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>All Trips ({sortedTrips.length} entries)</div>
+                {sortedTrips.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "var(--text3)", padding: "12px 0" }}>No trips recorded yet for this client.</div>
+                ) : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr><th>Date</th><th>Place</th><th>Item</th><th>Trips</th><th>Rate</th><th>Billed</th><th>Received</th><th>Pending</th></tr>
+                      </thead>
+                      <tbody>
+                        {sortedTrips.map(t => {
+                          const calc = store.calcTrip(t);
+                          return (
+                            <tr key={t.id}>
+                              <td>{t.date}</td>
+                              <td>{t.place}</td>
+                              <td><span className="badge badge-purple">{t.item}</span></td>
+                              <td className="td-bold">{t.tripCount}</td>
+                              <td>{fmt(t.ratePerTrip)}</td>
+                              <td className="td-accent">{fmt(calc.income)}</td>
+                              <td className="td-teal">{fmt(calc.clientPaid)}</td>
+                              <td className={calc.pending > 0 ? "td-red" : "td-teal"}>{fmt(calc.pending)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ fontWeight: 700, borderTop: "2px solid var(--border2)" }}>
+                          <td colSpan={3} style={{ color: "var(--text3)", fontSize: 11 }}>Total</td>
+                          <td className="td-bold">{totalTripCount}</td>
+                          <td></td>
+                          <td className="td-accent">{fmt(totalIncome)}</td>
+                          <td className="td-teal">{fmt(totalPaid)}</td>
+                          <td className={totalPending > 0 ? "td-red" : "td-teal"}>{fmt(totalPending)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
+
       {modal === "driver" && (
         <Modal title="Add Driver" onClose={() => { setModal(null); setForm({}); }}
           footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitDriver}>Add Driver</button></>}>
@@ -2290,28 +2569,24 @@ function UserPanel({ store, user }) {
             <div>
               <label>Salary Type *</label>
               <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-                <button
-                  className={`btn ${form.salaryType === "per_trip" ? "btn-primary" : "btn-outline"}`}
+                <button className={`btn ${form.salaryType === "per_trip" ? "btn-primary" : "btn-outline"}`}
                   style={{ flex: 1, justifyContent: "center" }}
-                  onClick={() => setForm(p => ({ ...p, salaryType: "per_trip" }))}>
-                  Per Trip
-                </button>
-                <button
-                  className={`btn ${form.salaryType === "salaried" ? "btn-primary" : "btn-outline"}`}
+                  onClick={() => setForm(p => ({ ...p, salaryType: "per_trip" }))}>Per Trip</button>
+                <button className={`btn ${form.salaryType === "salaried" ? "btn-primary" : "btn-outline"}`}
                   style={{ flex: 1, justifyContent: "center" }}
-                  onClick={() => setForm(p => ({ ...p, salaryType: "salaried" }))}>
-                  Salaried (Monthly)
-                </button>
+                  onClick={() => setForm(p => ({ ...p, salaryType: "salaried" }))}>Salaried (Monthly)</button>
               </div>
             </div>
-            <div>
-              <label>{form.salaryType === "salaried" ? "Monthly Salary (₹) *" : "Rate per Trip (₹) *"}</label>
-              <input type="number" min="0" placeholder="e.g. 500" value={form.salaryAmount || ""} onChange={e => setForm(p => ({ ...p, salaryAmount: e.target.value }))} />
-            </div>
+            {form.salaryType === "salaried" && (
+              <div>
+                <label>Monthly Salary (₹) *</label>
+                <input type="number" min="0" placeholder="e.g. 12000" value={form.salaryAmount || ""} onChange={e => setForm(p => ({ ...p, salaryAmount: e.target.value }))} />
+              </div>
+            )}
             <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 12, color: "var(--text3)" }}>
               {form.salaryType === "salaried"
                 ? "Fixed monthly salary — driver earns a flat amount regardless of trips."
-                : "Per-trip salary — driver earns a fixed rate for each trip completed."}
+                : "Per-trip salary — driver rate is entered each time a trip is added."}
             </div>
           </div>
         </Modal>
@@ -2323,11 +2598,7 @@ function UserPanel({ store, user }) {
           <div className="form-grid">
             {(() => {
               const d = drivers.find(dr => dr.id === form.driverPaymentId);
-              return d ? (
-                <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 13 }}>
-                  Recording payment for <strong>{d.name}</strong>
-                </div>
-              ) : null;
+              return d ? <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 13 }}>Recording payment for <strong>{d.name}</strong></div> : null;
             })()}
             <div className="fg2">
               <div><label>Amount Paid (₹) *</label><input type="number" min="1" placeholder="e.g. 5000" value={form.amount || ""} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} autoFocus /></div>
@@ -2344,12 +2615,7 @@ function UserPanel({ store, user }) {
           <Modal title={`${d.name} — Driver Details`} onClose={() => setDriverDetail(null)}>
             <div style={{ display: "grid", gap: 14 }}>
               <div className="grid g2" style={{ gap: 10 }}>
-                {[
-                  ["Name", d.name],
-                  ["Mobile", d.mobile || "—"],
-                  ["Salary Type", d.salaryType === "salaried" ? "Salaried (Monthly)" : "Per Trip"],
-                  ["Rate", d.salaryType === "per_trip" ? `${fmt(d.salaryAmount)} / trip` : `${fmt(d.salaryAmount)} / month`],
-                ].map(([k, v]) => (
+                {[["Name", d.name], ["Mobile", d.mobile || "—"], ["Salary Type", d.salaryType === "salaried" ? "Salaried (Monthly)" : "Per Trip"], ["Rate", d.salaryType === "per_trip" ? "Set per trip" : `${fmt(d.salaryAmount)} / month`]].map(([k, v]) => (
                   <div key={k} className="card-sm">
                     <div style={{ fontSize: 10, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".7px" }}>{k}</div>
                     <div style={{ fontWeight: 500, marginTop: 2 }}>{v}</div>
@@ -2371,7 +2637,7 @@ function UserPanel({ store, user }) {
                   <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Trips this month</div>
                   <div className="table-wrap">
                     <table>
-                      <thead><tr><th>Date</th><th>Client</th><th>Vehicle</th><th>Trips</th></tr></thead>
+                      <thead><tr><th>Date</th><th>Client</th><th>Vehicle</th><th>Trips</th>{d.salaryType === "per_trip" && <th>Driver Pay</th>}</tr></thead>
                       <tbody>
                         {driverTrips.map(t => {
                           const veh = vehicles.find(v => v.id === t.vehicleId);
@@ -2381,6 +2647,9 @@ function UserPanel({ store, user }) {
                               <td className="td-bold">{t.clientName}</td>
                               <td style={{ fontSize: 11 }}>{veh?.number}</td>
                               <td>{t.tripCount}</td>
+                              {d.salaryType === "per_trip" && (
+                                <td className="td-teal">{fmt((t.driverTripRate || 0) * t.tripCount)}</td>
+                              )}
                             </tr>
                           );
                         })}
@@ -2397,12 +2666,7 @@ function UserPanel({ store, user }) {
                       <thead><tr><th>Date</th><th>Month</th><th>Amount</th><th>Note</th></tr></thead>
                       <tbody>
                         {allPayments.map(p => (
-                          <tr key={p.id}>
-                            <td>{p.date}</td>
-                            <td>{p.month}</td>
-                            <td className="td-teal">{fmt(p.amount)}</td>
-                            <td style={{ fontSize: 11, color: "var(--text3)" }}>{p.note || "—"}</td>
-                          </tr>
+                          <tr key={p.id}><td>{p.date}</td><td>{p.month}</td><td className="td-teal">{fmt(p.amount)}</td><td style={{ fontSize: 11, color: "var(--text3)" }}>{p.note || "—"}</td></tr>
                         ))}
                       </tbody>
                     </table>
