@@ -1085,6 +1085,7 @@ function UserPanel({ store, user }) {
     const selectedDriver = drivers.find(d => d.id === form.driverId);
     const resolvedDriverName = selectedDriver ? selectedDriver.name : (form.driverName?.trim() || "");
     const resolvedDriverId = selectedDriver ? selectedDriver.id : null;
+    const isPerTripDriver = selectedDriver?.salaryType === "per_trip";
 
     if (
       !form.clientName?.trim() ||
@@ -1096,6 +1097,10 @@ function UserPanel({ store, user }) {
       !form.tripCount ||
       !form.ratePerTrip
     ) return alert("Fill all required fields.");
+
+    if (isPerTripDriver && (!form.driverTripRate || Number(form.driverTripRate) <= 0)) {
+      return alert("Enter the driver's rate per trip.");
+    }
 
     // Collect per-expense amounts entered in the trip form.
     const tripExpenses = {};
@@ -1111,6 +1116,7 @@ function UserPanel({ store, user }) {
       partnerId: form.partnerId,
       driverId: resolvedDriverId,
       driverName: resolvedDriverName,
+      driverTripRate: isPerTripDriver ? Number(form.driverTripRate) : 0,
       vehicleId: form.vehicleId,
       place: form.place,
       item: form.item,
@@ -1832,7 +1838,9 @@ function UserPanel({ store, user }) {
                   const thisMonth = today().slice(0, 7);
                   const driverTrips = trips.filter(t => t.driverId === d.id && t.date.startsWith(thisMonth));
                   const monthTrips = driverTrips.reduce((s, t) => s + t.tripCount, 0);
-                  const salaryDue = d.salaryType === "per_trip" ? d.salaryAmount * monthTrips : d.salaryAmount;
+                  const salaryDue = d.salaryType === "per_trip"
+                    ? driverTrips.reduce((s, t) => s + (t.driverTripRate || 0) * t.tripCount, 0)
+                    : d.salaryAmount;
                   const payments = store.firmDriverPayments(d.id).filter(p => p.month === thisMonth);
                   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
                   const remaining = Math.max(0, salaryDue - totalPaid);
@@ -1861,7 +1869,7 @@ function UserPanel({ store, user }) {
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span style={{ color: "var(--text3)" }}>
-                            {d.salaryType === "per_trip" ? `Salary (${fmt(d.salaryAmount)}/trip)` : "Monthly salary"}
+                            {d.salaryType === "per_trip" ? "Salary (from trips)" : "Monthly salary"}
                           </span>
                           <span style={{ color: "var(--accent)", fontWeight: 600 }}>{fmt(salaryDue)}</span>
                         </div>
@@ -2044,14 +2052,32 @@ function UserPanel({ store, user }) {
                 <label>Driver *</label>
                 {drivers.length > 0 ? (
                   <>
-                    <select value={form.driverId || ""} onChange={e => setForm(p => ({ ...p, driverId: e.target.value, driverName: "" }))}>
+                    <select value={form.driverId || ""} onChange={e => setForm(p => ({ ...p, driverId: e.target.value, driverName: "", driverTripRate: "" }))}>
                       <option value="">— Select Driver —</option>
-                      {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      {drivers.map(d => <option key={d.id} value={d.id}>{d.name} ({d.salaryType === "salaried" ? "Salaried" : "Per Trip"})</option>)}
                       <option value="__manual__">Type name manually…</option>
                     </select>
                     {form.driverId === "__manual__" && (
                       <input style={{ marginTop: 6 }} placeholder="Driver's name" value={form.driverName || ""} onChange={e => setForm(p => ({ ...p, driverName: e.target.value }))} />
                     )}
+                    {(() => {
+                      const sel = drivers.find(d => d.id === form.driverId);
+                      if (!sel) return null;
+                      if (sel.salaryType === "salaried") {
+                        return (
+                          <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "var(--accent-dim)", borderRadius: "var(--radius)", fontSize: 12 }}>
+                            <span style={{ color: "var(--accent)", fontWeight: 600 }}>Salaried</span>
+                            <span style={{ color: "var(--text3)" }}>— fixed monthly salary, tracked separately</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div style={{ marginTop: 8 }}>
+                          <label style={{ fontSize: 11 }}>Driver Rate per Trip (₹) *</label>
+                          <input type="number" min="0" placeholder="e.g. 300" value={form.driverTripRate || ""} onChange={e => setForm(p => ({ ...p, driverTripRate: e.target.value }))} />
+                        </div>
+                      );
+                    })()}
                   </>
                 ) : (
                   <input placeholder="Driver's name" value={form.driverName || ""} onChange={e => setForm(p => ({ ...p, driverName: e.target.value }))} />
@@ -2289,14 +2315,16 @@ function UserPanel({ store, user }) {
                   onClick={() => setForm(p => ({ ...p, salaryType: "salaried" }))}>Salaried (Monthly)</button>
               </div>
             </div>
-            <div>
-              <label>{form.salaryType === "salaried" ? "Monthly Salary (₹) *" : "Rate per Trip (₹) *"}</label>
-              <input type="number" min="0" placeholder="e.g. 500" value={form.salaryAmount || ""} onChange={e => setForm(p => ({ ...p, salaryAmount: e.target.value }))} />
-            </div>
+            {form.salaryType === "salaried" && (
+              <div>
+                <label>Monthly Salary (₹) *</label>
+                <input type="number" min="0" placeholder="e.g. 12000" value={form.salaryAmount || ""} onChange={e => setForm(p => ({ ...p, salaryAmount: e.target.value }))} />
+              </div>
+            )}
             <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 12, fontSize: 12, color: "var(--text3)" }}>
               {form.salaryType === "salaried"
                 ? "Fixed monthly salary — driver earns a flat amount regardless of trips."
-                : "Per-trip salary — driver earns a fixed rate for each trip completed."}
+                : "Per-trip salary — driver rate is entered each time a trip is added."}
             </div>
           </div>
         </Modal>
@@ -2325,7 +2353,7 @@ function UserPanel({ store, user }) {
           <Modal title={`${d.name} — Driver Details`} onClose={() => setDriverDetail(null)}>
             <div style={{ display: "grid", gap: 14 }}>
               <div className="grid g2" style={{ gap: 10 }}>
-                {[["Name", d.name], ["Mobile", d.mobile || "—"], ["Salary Type", d.salaryType === "salaried" ? "Salaried (Monthly)" : "Per Trip"], ["Rate", d.salaryType === "per_trip" ? `${fmt(d.salaryAmount)} / trip` : `${fmt(d.salaryAmount)} / month`]].map(([k, v]) => (
+                {[["Name", d.name], ["Mobile", d.mobile || "—"], ["Salary Type", d.salaryType === "salaried" ? "Salaried (Monthly)" : "Per Trip"], ["Rate", d.salaryType === "per_trip" ? "Set per trip" : `${fmt(d.salaryAmount)} / month`]].map(([k, v]) => (
                   <div key={k} className="card-sm">
                     <div style={{ fontSize: 10, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".7px" }}>{k}</div>
                     <div style={{ fontWeight: 500, marginTop: 2 }}>{v}</div>
@@ -2347,11 +2375,21 @@ function UserPanel({ store, user }) {
                   <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Trips this month</div>
                   <div className="table-wrap">
                     <table>
-                      <thead><tr><th>Date</th><th>Client</th><th>Vehicle</th><th>Trips</th></tr></thead>
+                      <thead><tr><th>Date</th><th>Client</th><th>Vehicle</th><th>Trips</th>{d.salaryType === "per_trip" && <th>Driver Pay</th>}</tr></thead>
                       <tbody>
                         {driverTrips.map(t => {
                           const veh = vehicles.find(v => v.id === t.vehicleId);
-                          return <tr key={t.id}><td>{t.date}</td><td className="td-bold">{t.clientName}</td><td style={{ fontSize: 11 }}>{veh?.number}</td><td>{t.tripCount}</td></tr>;
+                          return (
+                            <tr key={t.id}>
+                              <td>{t.date}</td>
+                              <td className="td-bold">{t.clientName}</td>
+                              <td style={{ fontSize: 11 }}>{veh?.number}</td>
+                              <td>{t.tripCount}</td>
+                              {d.salaryType === "per_trip" && (
+                                <td className="td-teal">{fmt((t.driverTripRate || 0) * t.tripCount)}</td>
+                              )}
+                            </tr>
+                          );
                         })}
                       </tbody>
                     </table>
