@@ -1050,6 +1050,7 @@ function UserPanel({ store, user }) {
   const [tripFilter, setTripFilter] = useState({ client: "", partner: "", vehicle: "", dateFrom: "", dateTo: "" });
   const [txFilter, setTxFilter] = useState({ type: "all", partner: "", dateFrom: "", dateTo: "" });
   const [vehFilter, setVehFilter] = useState({ type: "all", emi: "all" });
+  const [expCatFilter, setExpCatFilter] = useState("all");
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const swipeLocked = useRef(false);
@@ -1868,30 +1869,101 @@ function UserPanel({ store, user }) {
           <>
             <div className="topbar">
               <div>
-                <h1 className="page-title">Expense Categories</h1>
-                <p className="page-sub">Labels for tracking debits in Credit/Debit</p>
+                <h1 className="page-title">Expenses</h1>
+                <p className="page-sub">All debit entries from Credit/Debit</p>
               </div>
               <button className="btn btn-primary" onClick={() => { setModal("expense"); setForm({ expenseRows: [{ label: "" }] }); }}>
-                {Icon.plus} Add Expense
+                {Icon.plus} Add Category
               </button>
             </div>
             <div className="content">
-              <div className="card">
-                <div className="table-wrap">
-                  <table>
-                    <thead><tr><th>#</th><th>Expense Label</th></tr></thead>
-                    <tbody>
-                      {expenses.length === 0 && <tr><td colSpan={2}><div className="empty"><p>No expenses defined yet.</p></div></td></tr>}
-                      {expenses.map((e, i) => (
-                        <tr key={e.id}>
-                          <td className="td-bold">{i + 1}</td>
-                          <td className="td-bold">{e.label}</td>
-                        </tr>
+              {(() => {
+                const debits = transactions.filter(tx => tx.type === "debit");
+                // Build category list: user-defined expense labels + any categories used in debits
+                const expenseLabels = expenses.map(e => e.label);
+                const usedCats = [...new Set(debits.map(tx => tx.category))];
+                const allCats = [...new Set([...expenseLabels, ...usedCats])].filter(Boolean);
+
+                const totalByCategory = {};
+                allCats.forEach(cat => {
+                  totalByCategory[cat] = debits.filter(tx => tx.category === cat).reduce((s, tx) => s + tx.amount, 0);
+                });
+                const grandTotal = debits.reduce((s, tx) => s + tx.amount, 0);
+
+                const filtered = (expCatFilter === "all" ? debits : debits.filter(tx => tx.category === expCatFilter))
+                  .sort((a, b) => b.date.localeCompare(a.date));
+
+                return (
+                  <>
+                    {/* Totals by category */}
+                    <div className="grid g3" style={{ marginBottom: 16 }}>
+                      <div className="stat-card red">
+                        <div className="stat-label">Total Expenses</div>
+                        <div className="stat-value">{fmt(grandTotal)}</div>
+                        <div className="stat-sub">{debits.length} debit entries</div>
+                      </div>
+                      {allCats.slice(0, 2).map(cat => (
+                        <div key={cat} className="stat-card" style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
+                          <div className="stat-label">{cat}</div>
+                          <div className="stat-value" style={{ color: "var(--red)" }}>{fmt(totalByCategory[cat] || 0)}</div>
+                          <div className="stat-sub">{debits.filter(tx => tx.category === cat).length} entries</div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                    </div>
+
+                    {/* Category filter tags */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+                      <button className={`btn btn-sm ${expCatFilter === "all" ? "btn-primary" : "btn-outline"}`}
+                        onClick={() => setExpCatFilter("all")}>All</button>
+                      {allCats.map(cat => (
+                        <button key={cat} className={`btn btn-sm ${expCatFilter === cat ? "btn-primary" : "btn-outline"}`}
+                          onClick={() => setExpCatFilter(expCatFilter === cat ? "all" : cat)}>
+                          {cat}
+                          <span style={{ marginLeft: 5, fontSize: 10, opacity: 0.8 }}>{fmt(totalByCategory[cat] || 0)}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Transaction list */}
+                    <div className="card">
+                      <div className="table-wrap">
+                        <table>
+                          <thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Description</th><th>Partner</th></tr></thead>
+                          <tbody>
+                            {filtered.length === 0 && (
+                              <tr><td colSpan={5}><div className="empty"><p>No expenses yet. Add a Debit entry in Credit/Debit.</p></div></td></tr>
+                            )}
+                            {filtered.map(tx => {
+                              const by = partners.find(p => p.id === tx.partnerId);
+                              return (
+                                <tr key={tx.id}>
+                                  <td>{tx.date}</td>
+                                  <td><span className="badge badge-red">{tx.category}</span></td>
+                                  <td className="td-red" style={{ fontWeight: 600 }}>– {fmt(tx.amount)}</td>
+                                  <td style={{ fontSize: 12, color: "var(--text3)" }}>{tx.description || "—"}</td>
+                                  <td><span className="badge badge-gray">{by?.name?.split(" ")[0] || "—"}</span></td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Manage categories */}
+                    {expenses.length > 0 && (
+                      <div className="card" style={{ marginTop: 16 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: "var(--text2)" }}>Expense Categories</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {expenses.map(e => (
+                            <span key={e.id} className="badge badge-gray" style={{ fontSize: 12, padding: "4px 10px" }}>{e.label}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </>
         )}
@@ -2438,9 +2510,20 @@ function UserPanel({ store, user }) {
                 <label>Category *</label>
                 <select value={form.category || ""} onChange={e => setForm(p => ({ ...p, category: e.target.value, driverPickId: "", description: "" }))}>
                   <option value="">— Select Category —</option>
-                  {(form.type === 'credit' ? CREDIT_CATEGORIES : DEBIT_CATEGORIES).map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
+                  {form.type === 'credit' ? (
+                    CREDIT_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)
+                  ) : (
+                    <>
+                      {expenses.length > 0 && (
+                        <optgroup label="My Expense Categories">
+                          {expenses.map(e => <option key={e.id} value={e.label}>{e.label}</option>)}
+                        </optgroup>
+                      )}
+                      <optgroup label="Other">
+                        {DEBIT_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                      </optgroup>
+                    </>
+                  )}
                 </select>
               </div>
               <div><label>Date *</label><input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} /></div>
