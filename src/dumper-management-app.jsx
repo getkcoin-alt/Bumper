@@ -1247,6 +1247,25 @@ function UserPanel({ store, user }) {
     setForm({});
   };
 
+  const submitClientPayment = async () => {
+    const amount = Number(form.clientPaymentAmount);
+    if (!amount || amount <= 0) return alert("Enter a valid payment amount.");
+    const pendingTrips = (form.clientPaymentTrips || [])
+      .filter(t => store.calcTrip(t).pending > 0)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (!pendingTrips.length) return alert("No pending amount for this client.");
+    let remaining = amount;
+    for (const trip of pendingTrips) {
+      if (remaining <= 0) break;
+      const c = store.calcTrip(trip);
+      const toApply = Math.min(remaining, c.pending);
+      await store.updateClientPaid(trip.id, c.clientPaid + toApply);
+      remaining -= toApply;
+    }
+    setModal(null);
+    setForm({});
+  };
+
   const importClientsFromTrips = async () => {
     const existingNames = new Set(clients.map(c => c.name.toLowerCase().trim()));
     const toImport = [...new Set(trips.map(t => t.clientName.trim()))].filter(n => !existingNames.has(n.toLowerCase()));
@@ -1650,10 +1669,18 @@ function UserPanel({ store, user }) {
                             <span style={{ color: totalPending > 0 ? "var(--red)" : "var(--teal)", fontWeight: 700, fontFamily: "Syne" }}>{fmt(totalPending)}</span>
                           </div>
                         </div>
-                        <button className="btn btn-outline btn-sm" style={{ width: "100%", justifyContent: "center" }}
-                          onClick={() => setClientDetail({ client: c, cTrips, totalIncome, totalPaid, totalPending, totalTripCount })}>
-                          View Balance Sheet
-                        </button>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          {totalPending > 0 && (
+                            <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: "center" }}
+                              onClick={() => { setModal("clientPayment"); setForm({ clientPaymentTrips: cTrips, clientPaymentName: c.name, clientPaymentPending: totalPending, date: today() }); }}>
+                              + Record Payment
+                            </button>
+                          )}
+                          <button className="btn btn-outline btn-sm" style={{ flex: 1, justifyContent: "center" }}
+                            onClick={() => setClientDetail({ client: c, cTrips, totalIncome, totalPaid, totalPending, totalTripCount })}>
+                            View Balance Sheet
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -2441,6 +2468,33 @@ function UserPanel({ store, user }) {
             </div>
             <div><label>Address</label><input placeholder="Site / office address (optional)" value={form.address || ""} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} /></div>
             <div><label>Notes</label><input placeholder="Any notes about this client (optional)" value={form.notes || ""} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} /></div>
+          </div>
+        </Modal>
+      )}
+
+      {modal === "clientPayment" && (
+        <Modal title={`Record Payment — ${form.clientPaymentName}`} onClose={() => { setModal(null); setForm({}); }}
+          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitClientPayment}>Save Payment</button></>}>
+          <div className="form-grid">
+            <div style={{ background: "var(--bg3)", borderRadius: "var(--radius)", padding: 12, fontSize: 13 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "var(--text3)" }}>Total pending</span>
+                <span style={{ color: "var(--red)", fontWeight: 700, fontFamily: "Syne" }}>{fmt(form.clientPaymentPending)}</span>
+              </div>
+            </div>
+            <div><label>Amount Received (₹) *</label>
+              <input type="number" min="0" placeholder="e.g. 50000" value={form.clientPaymentAmount || ""}
+                onChange={e => setForm(p => ({ ...p, clientPaymentAmount: e.target.value }))} />
+            </div>
+            <div><label>Date *</label>
+              <input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} />
+            </div>
+            <div><label>Note (optional)</label>
+              <input placeholder="e.g. cheque, UPI ref" value={form.note || ""} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} />
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text3)" }}>
+              Payment is applied to oldest pending trips first.
+            </div>
           </div>
         </Modal>
       )}
