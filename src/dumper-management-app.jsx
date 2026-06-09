@@ -1187,11 +1187,11 @@ function UserPanel({ store, user }) {
     setModal(null); setForm({});
   };
 
-  const submitTransaction = () => {
+  const submitTransaction = async () => {
     if (!form.type || !form.amount || !form.category?.trim() || !form.date) {
       return alert("Fill all required fields.");
     }
-    store.addTransaction({
+    await store.addTransaction({
       firmId: user.firmId,
       partnerId: form.partnerId || user.id,
       type: form.type,
@@ -1202,6 +1202,20 @@ function UserPanel({ store, user }) {
       referenceNumber: form.referenceNumber?.trim() || "",
       paymentMethod: form.paymentMethod || "",
     });
+    // If Debit + Driver Salary + specific driver selected, also record in driver_payments
+    const realDriver = form.driverPickId && form.driverPickId !== "__manual__"
+      ? drivers.find(d => d.id === form.driverPickId) : null;
+    if (form.type === "debit" && form.category === "Driver Salary" && realDriver) {
+      await store.addDriverPayment({
+        driverId: realDriver.id,
+        firmId: user.firmId,
+        amount: Number(form.amount),
+        note: form.description?.trim() || "",
+        date: form.date,
+        month: form.date.slice(0, 7),
+        recordedBy: user.id,
+      });
+    }
     setModal(null);
     setForm({});
   };
@@ -1223,6 +1237,7 @@ function UserPanel({ store, user }) {
     if (!form.amount || Number(form.amount) <= 0) return alert("Enter a valid payment amount.");
     if (!form.driverPaymentId) return;
     const date = form.date || today();
+    const drv = drivers.find(d => d.id === form.driverPaymentId);
     await store.addDriverPayment({
       driverId: form.driverPaymentId,
       firmId: user.firmId,
@@ -1231,6 +1246,18 @@ function UserPanel({ store, user }) {
       date,
       month: date.slice(0, 7),
       recordedBy: user.id,
+    });
+    // Mirror as a debit transaction so it appears in Credit/Debit tab
+    await store.addTransaction({
+      firmId: user.firmId,
+      partnerId: user.id,
+      type: "debit",
+      amount: Number(form.amount),
+      category: "Driver Salary",
+      description: drv ? drv.name + (form.note?.trim() ? " · " + form.note.trim() : "") : (form.note?.trim() || ""),
+      date,
+      referenceNumber: "",
+      paymentMethod: "",
     });
     setModal(null);
     setForm({});
@@ -1784,17 +1811,7 @@ function UserPanel({ store, user }) {
                   )}
                 </div>
                 {(() => {
-                  // Merge driver payments as debit rows
-                  const allDriverPayments = drivers.flatMap(d => store.firmDriverPayments(d.id));
-                  const driverPayRows = allDriverPayments
-                    .map(p => {
-                      const drv = drivers.find(d => d.id === p.driverId);
-                      return { _isDriverPay: true, id: p.id, date: p.date, type: 'debit', amount: p.amount,
-                        category: 'Driver Salary', description: `${drv?.name || ''}${p.note ? ' · ' + p.note : ''}`,
-                        partnerId: p.recordedBy || null, paymentMethod: null, referenceNumber: null };
-                    });
-                  const allRows = [...transactions, ...driverPayRows].sort((a, b) => b.date.localeCompare(a.date));
-                  const filtered = allRows.filter(tx => {
+                  const filtered = [...transactions].sort((a, b) => b.date.localeCompare(a.date)).filter(tx => {
                     if (txFilter.type !== "all" && tx.type !== txFilter.type) return false;
                     if (txFilter.partner && tx.partnerId !== txFilter.partner) return false;
                     if (txFilter.dateFrom && tx.date < txFilter.dateFrom) return false;
@@ -1803,7 +1820,7 @@ function UserPanel({ store, user }) {
                   });
                   return (
                     <>
-                      <div className="filter-count" style={{ marginBottom: 10 }}>Showing {filtered.length} of {allRows.length} entries</div>
+                      <div className="filter-count" style={{ marginBottom: 10 }}>Showing {filtered.length} of {transactions.length} entries</div>
                       <div className="table-wrap">
                         <table>
                           <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Category</th><th>Description</th><th>Payment</th><th>Reference</th><th>Partner</th></tr></thead>
@@ -1812,7 +1829,7 @@ function UserPanel({ store, user }) {
                             {filtered.map(tx => {
                               const by = partners.find(p => p.id === tx.partnerId);
                               return (
-                                <tr key={tx.id} style={tx._isDriverPay ? { background: "rgba(var(--red-rgb,220,53,69),.04)" } : {}}>
+                                <tr key={tx.id}>
                                   <td>{tx.date}</td>
                                   <td>
                                     {tx.type === 'credit' ? (
