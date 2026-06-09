@@ -2419,7 +2419,7 @@ function UserPanel({ store, user }) {
             <div className="fg2">
               <div>
                 <label>Category *</label>
-                <select value={form.category || ""} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
+                <select value={form.category || ""} onChange={e => setForm(p => ({ ...p, category: e.target.value, driverPickId: "", description: "" }))}>
                   <option value="">— Select Category —</option>
                   {(form.type === 'credit' ? CREDIT_CATEGORIES : DEBIT_CATEGORIES).map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -2428,7 +2428,28 @@ function UserPanel({ store, user }) {
               </div>
               <div><label>Date *</label><input type="date" value={form.date || today()} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} /></div>
             </div>
-            <div><label>Description</label><input placeholder="Brief description of transaction" value={form.description || ""} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></div>
+            {form.type === "debit" && form.category === "Driver Salary" && (
+              <div>
+                <label>Driver</label>
+                <select value={form.driverPickId || ""} onChange={e => {
+                  const val = e.target.value;
+                  const drv = drivers.find(d => d.id === val);
+                  setForm(p => ({ ...p, driverPickId: val, description: drv ? drv.name : p.description }));
+                }}>
+                  <option value="">— Select Driver —</option>
+                  {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  <option value="__manual__">Type manually…</option>
+                </select>
+              </div>
+            )}
+            <div>
+              <label>Description</label>
+              {form.type === "debit" && form.category === "Driver Salary" && form.driverPickId === "__manual__" ? (
+                <input placeholder="Enter driver name or note" value={form.description || ""} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+              ) : (
+                <input placeholder="Brief description of transaction" value={form.description || ""} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+              )}
+            </div>
             <div className="fg2">
               <div>
                 <label>Payment Method</label>
