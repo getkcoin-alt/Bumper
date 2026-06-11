@@ -124,6 +124,7 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 
 /* buttons */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:'DM Sans',sans-serif}
+.btn:disabled{opacity:.6;cursor:not-allowed}
 .btn-primary{background:var(--accent);color:#0d1117}
 .btn-primary:hover{background:var(--accent2)}
 .btn-outline{background:transparent;color:var(--text2);border:1px solid var(--border)}
@@ -1040,6 +1041,7 @@ function UserPanel({ store, user }) {
   const [tab, setTab] = useState("dashboard");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
+  const [submitting, setSubmitting] = useState(false);
   const [tripDetail, setTripDetail] = useState(null);
   const [driverDetail, setDriverDetail] = useState(null);
   const [clientDetail, setClientDetail] = useState(null);
@@ -1192,33 +1194,39 @@ function UserPanel({ store, user }) {
     if (!form.type || !form.amount || !form.category?.trim() || !form.date) {
       return alert("Fill all required fields.");
     }
-    await store.addTransaction({
-      firmId: user.firmId,
-      partnerId: form.partnerId || user.id,
-      type: form.type,
-      amount: Number(form.amount),
-      category: form.category.trim(),
-      description: form.description?.trim() || "",
-      date: form.date,
-      referenceNumber: form.referenceNumber?.trim() || "",
-      paymentMethod: form.paymentMethod || "",
-    });
-    // If Debit + Driver Salary + specific driver selected, also record in driver_payments
-    const realDriver = form.driverPickId && form.driverPickId !== "__manual__"
-      ? drivers.find(d => d.id === form.driverPickId) : null;
-    if (form.type === "debit" && form.category === "Driver Salary" && realDriver) {
-      await store.addDriverPayment({
-        driverId: realDriver.id,
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await store.addTransaction({
         firmId: user.firmId,
+        partnerId: form.partnerId || user.id,
+        type: form.type,
         amount: Number(form.amount),
-        note: form.description?.trim() || "",
+        category: form.category.trim(),
+        description: form.description?.trim() || "",
         date: form.date,
-        month: form.date.slice(0, 7),
-        recordedBy: user.id,
+        referenceNumber: form.referenceNumber?.trim() || "",
+        paymentMethod: form.paymentMethod || "",
       });
+      // If Debit + Driver Salary + specific driver selected, also record in driver_payments
+      const realDriver = form.driverPickId && form.driverPickId !== "__manual__"
+        ? drivers.find(d => d.id === form.driverPickId) : null;
+      if (form.type === "debit" && form.category === "Driver Salary" && realDriver) {
+        await store.addDriverPayment({
+          driverId: realDriver.id,
+          firmId: user.firmId,
+          amount: Number(form.amount),
+          note: form.description?.trim() || "",
+          date: form.date,
+          month: form.date.slice(0, 7),
+          recordedBy: user.id,
+        });
+      }
+      setModal(null);
+      setForm({});
+    } finally {
+      setSubmitting(false);
     }
-    setModal(null);
-    setForm({});
   };
 
   const submitDriver = async () => {
@@ -1237,31 +1245,37 @@ function UserPanel({ store, user }) {
   const submitDriverPayment = async () => {
     if (!form.amount || Number(form.amount) <= 0) return alert("Enter a valid payment amount.");
     if (!form.driverPaymentId) return;
-    const date = form.date || today();
-    const drv = drivers.find(d => d.id === form.driverPaymentId);
-    await store.addDriverPayment({
-      driverId: form.driverPaymentId,
-      firmId: user.firmId,
-      amount: Number(form.amount),
-      note: form.note?.trim() || "",
-      date,
-      month: date.slice(0, 7),
-      recordedBy: user.id,
-    });
-    // Mirror as a debit transaction so it appears in Credit/Debit tab
-    await store.addTransaction({
-      firmId: user.firmId,
-      partnerId: user.id,
-      type: "debit",
-      amount: Number(form.amount),
-      category: "Driver Salary",
-      description: drv ? drv.name + (form.note?.trim() ? " · " + form.note.trim() : "") : (form.note?.trim() || ""),
-      date,
-      referenceNumber: "",
-      paymentMethod: "",
-    });
-    setModal(null);
-    setForm({});
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const date = form.date || today();
+      const drv = drivers.find(d => d.id === form.driverPaymentId);
+      await store.addDriverPayment({
+        driverId: form.driverPaymentId,
+        firmId: user.firmId,
+        amount: Number(form.amount),
+        note: form.note?.trim() || "",
+        date,
+        month: date.slice(0, 7),
+        recordedBy: user.id,
+      });
+      // Mirror as a debit transaction so it appears in Credit/Debit tab
+      await store.addTransaction({
+        firmId: user.firmId,
+        partnerId: user.id,
+        type: "debit",
+        amount: Number(form.amount),
+        category: "Driver Salary",
+        description: drv ? drv.name + (form.note?.trim() ? " · " + form.note.trim() : "") : (form.note?.trim() || ""),
+        date,
+        referenceNumber: "",
+        paymentMethod: "",
+      });
+      setModal(null);
+      setForm({});
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const submitClient = async () => {
@@ -2493,7 +2507,7 @@ function UserPanel({ store, user }) {
 
       {modal === "transaction" && (
         <Modal title="Add Credit/Debit Transaction" onClose={() => setModal(null)}
-          footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" onClick={submitTransaction}>Save Transaction</button></>}>
+          footer={<><button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button><button className="btn btn-primary" disabled={submitting} onClick={submitTransaction}>{submitting ? "Saving…" : "Save Transaction"}</button></>}>
           <div className="form-grid">
             <div className="fg2">
               <div>
@@ -2739,7 +2753,7 @@ function UserPanel({ store, user }) {
 
       {modal === "driverPayment" && (
         <Modal title="Record Salary Payment" onClose={() => { setModal(null); setForm({}); }}
-          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitDriverPayment}>Save Payment</button></>}>
+          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" disabled={submitting} onClick={submitDriverPayment}>{submitting ? "Saving…" : "Save Payment"}</button></>}>
           <div className="form-grid">
             {(() => {
               const d = drivers.find(dr => dr.id === form.driverPaymentId);
