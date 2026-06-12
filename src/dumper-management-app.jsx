@@ -752,6 +752,11 @@ function Modal({ title, onClose, children, footer }) {
 
 function fmt(n) { return "₹" + Number(n).toLocaleString("en-IN"); }
 
+function monthLabel(monthStr) {
+  const [y, m] = monthStr.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+}
+
 function calcEmi(v) {
   if (!v.emiAmount || !v.emiStartDate || !v.emiTenureMonths) return null;
   const start = new Date(v.emiStartDate);
@@ -2116,6 +2121,47 @@ function UserPanel({ store, user }) {
               {drivers.length === 0 && (
                 <div className="card"><div className="empty"><p>No drivers yet. Add a driver to assign them to trips and track salary.</p></div></div>
               )}
+
+              {(() => {
+                const allPayments = drivers.flatMap(d => store.firmDriverPayments(d.id).map(p => ({ ...p, driverName: d.name })));
+                if (allPayments.length === 0) return null;
+                const byMonth = {};
+                allPayments.forEach(p => {
+                  if (!byMonth[p.month]) byMonth[p.month] = [];
+                  byMonth[p.month].push(p);
+                });
+                const months = Object.keys(byMonth).sort().reverse();
+                return (
+                  <div className="card" style={{ marginBottom: 16 }}>
+                    <h3 style={{ fontSize: 14, marginBottom: 14 }}>Driver Salary — Monthly Summary</h3>
+                    {months.map(month => {
+                      const monthPayments = byMonth[month];
+                      const monthTotal = monthPayments.reduce((s, p) => s + p.amount, 0);
+                      const byDriver = {};
+                      monthPayments.forEach(p => {
+                        if (!byDriver[p.driverId]) byDriver[p.driverId] = { name: p.driverName, total: 0, count: 0 };
+                        byDriver[p.driverId].total += p.amount;
+                        byDriver[p.driverId].count += 1;
+                      });
+                      return (
+                        <div key={month} style={{ marginBottom: 12 }}>
+                          <div className="exp-row" style={{ borderBottom: "1px solid var(--border2)" }}>
+                            <span style={{ fontWeight: 600, fontFamily: "Syne" }}>{monthLabel(month)}</span>
+                            <span style={{ fontWeight: 700, fontFamily: "Syne", color: "var(--red)" }}>{fmt(monthTotal)}</span>
+                          </div>
+                          {Object.values(byDriver).map(d => (
+                            <div key={d.name} className="exp-row" style={{ paddingLeft: 12 }}>
+                              <span className="er-label">{d.name} <span style={{ fontSize: 10, color: "var(--text3)" }}>({d.count} payment{d.count !== 1 ? "s" : ""})</span></span>
+                              <span style={{ fontWeight: 500 }}>{fmt(d.total)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
               <div className="grid g3">
                 {drivers.map(d => {
                   const thisMonth = today().slice(0, 7);
