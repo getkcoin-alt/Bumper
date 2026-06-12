@@ -1210,6 +1210,21 @@ function UserPanel({ store, user }) {
     setModal(null); setForm({});
   };
 
+  // Apply a client payment FIFO across that client's oldest pending trips first
+  const distributeClientPayment = async (clientName, amount) => {
+    const pendingTrips = trips
+      .filter(t => t.clientName.toLowerCase() === clientName.toLowerCase() && store.calcTrip(t).pending > 0)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    let remaining = amount;
+    for (const trip of pendingTrips) {
+      if (remaining <= 0) break;
+      const c = store.calcTrip(trip);
+      const toApply = Math.min(remaining, c.pending);
+      await store.updateClientPaid(trip.id, c.clientPaid + toApply);
+      remaining -= toApply;
+    }
+  };
+
   const submitTransaction = async () => {
     if (!form.type || !form.amount || !form.category?.trim() || !form.date) {
       return alert("Fill all required fields.");
@@ -1241,6 +1256,12 @@ function UserPanel({ store, user }) {
           month: form.date.slice(0, 7),
           recordedBy: user.id,
         });
+      }
+      // If Credit + Client Payment + specific client selected, apply payment to their pending trips
+      const realClient = form.clientPickId && form.clientPickId !== "__manual__"
+        ? clients.find(c => c.id === form.clientPickId) : null;
+      if (form.type === "credit" && form.category === "Client Payment" && realClient) {
+        await distributeClientPayment(realClient.name, Number(form.amount));
       }
       setModal(null);
       setForm({});
@@ -1317,18 +1338,9 @@ function UserPanel({ store, user }) {
   const submitClientPayment = async () => {
     const amount = Number(form.clientPaymentAmount);
     if (!amount || amount <= 0) return alert("Enter a valid payment amount.");
-    const pendingTrips = (form.clientPaymentTrips || [])
-      .filter(t => store.calcTrip(t).pending > 0)
-      .sort((a, b) => a.date.localeCompare(b.date));
-    if (!pendingTrips.length) return alert("No pending amount for this client.");
-    let remaining = amount;
-    for (const trip of pendingTrips) {
-      if (remaining <= 0) break;
-      const c = store.calcTrip(trip);
-      const toApply = Math.min(remaining, c.pending);
-      await store.updateClientPaid(trip.id, c.clientPaid + toApply);
-      remaining -= toApply;
-    }
+    const hasPending = (form.clientPaymentTrips || []).some(t => store.calcTrip(t).pending > 0);
+    if (!hasPending) return alert("No pending amount for this client.");
+    await distributeClientPayment(form.clientPaymentName, amount);
     setModal(null);
     setForm({});
   };
@@ -2591,7 +2603,7 @@ function UserPanel({ store, user }) {
             <div className="fg2">
               <div>
                 <label>Category *</label>
-                <select value={form.category || ""} onChange={e => setForm(p => ({ ...p, category: e.target.value, driverPickId: "", description: "" }))}>
+                <select value={form.category || ""} onChange={e => setForm(p => ({ ...p, category: e.target.value, driverPickId: "", clientPickId: "", description: "" }))}>
                   <option value="">— Select Category —</option>
                   {form.type === 'credit' ? (
                     CREDIT_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)
@@ -2625,13 +2637,33 @@ function UserPanel({ store, user }) {
                 </select>
               </div>
             )}
+            {form.type === "credit" && form.category === "Client Payment" && (
+              <div>
+                <label>Client</label>
+                <select value={form.clientPickId || ""} onChange={e => {
+                  const val = e.target.value;
+                  const cl = clients.find(c => c.id === val);
+                  setForm(p => ({ ...p, clientPickId: val, description: cl ? cl.name : p.description }));
+                }}>
+                  <option value="">— Select Client —</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="__manual__">Type manually…</option>
+                </select>
+                {form.clientPickId && form.clientPickId !== "__manual__" && (
+                  <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>
+                    Payment will be applied to this client's oldest pending trips first.
+                  </div>
+                )}
+              </div>
+            )}
             <div>
               <label>Description</label>
-              {form.type === "debit" && form.category === "Driver Salary" && form.driverPickId === "__manual__" ? (
-                <input placeholder="Enter driver name or note" value={form.description || ""} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
-              ) : (
-                <input placeholder="Brief description of transaction" value={form.description || ""} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
-              )}
+              <input placeholder={
+                (form.type === "debit" && form.category === "Driver Salary" && form.driverPickId === "__manual__") ||
+                (form.type === "credit" && form.category === "Client Payment" && form.clientPickId === "__manual__")
+                  ? "Enter name or note"
+                  : "Brief description of transaction"
+              } value={form.description || ""} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
             </div>
             <div className="fg2">
               <div>
