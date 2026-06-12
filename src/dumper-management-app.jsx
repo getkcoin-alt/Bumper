@@ -641,6 +641,21 @@ function useStore() {
     }
   };
 
+  const updateDriver = async (id, data) => {
+    try {
+      const { data: dbData, error } = await supabase
+        .from('drivers').update(appToDb.driver(data)).eq('id', id).select().single();
+      if (error) throw error;
+      const updated = dbToApp.driver(dbData);
+      setDrivers(p => p.map(d => d.id === id ? updated : d));
+      return updated;
+    } catch (error) {
+      console.error('Error updating driver:', error);
+      alert('Failed to update driver');
+      throw error;
+    }
+  };
+
   const addDriverPayment = async (data) => {
     try {
       const { data: dbData, error } = await supabase
@@ -729,7 +744,7 @@ function useStore() {
     firms, users, vehicles, expenses, trips, transactions, drivers, driverPayments, clients, currentUser, setCurrentUser, loading,
 
     firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions, firmDrivers, firmDriverPayments, firmClients,
-    addFirm, addUser, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction, addDriver, addDriverPayment, addClient, updateClient,
+    addFirm, addUser, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction, addDriver, updateDriver, addDriverPayment, addClient, updateClient,
     calcTrip, firmSummary, resetAllData,
   };
 }
@@ -1236,13 +1251,18 @@ function UserPanel({ store, user }) {
 
   const submitDriver = async () => {
     if (!form.name?.trim()) return alert("Driver name is required.");
-    await store.addDriver({
+    const data = {
       firmId: user.firmId,
       name: form.name.trim(),
       mobile: form.mobile?.trim() || "",
       salaryType: form.salaryType || "per_trip",
       salaryAmount: Number(form.salaryAmount) || 0,
-    });
+    };
+    if (form.editDriverId) {
+      await store.updateDriver(form.editDriverId, data);
+    } else {
+      await store.addDriver(data);
+    }
     setModal(null);
     setForm({});
   };
@@ -2186,9 +2206,12 @@ function UserPanel({ store, user }) {
                             <div style={{ fontSize: 11, color: "var(--text3)" }}>{d.mobile || "—"}</div>
                           </div>
                         </div>
-                        <span className={`badge ${d.salaryType === "salaried" ? "badge-accent" : "badge-teal"}`}>
-                          {d.salaryType === "salaried" ? "Salaried" : "Per Trip"}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span className={`badge ${d.salaryType === "salaried" ? "badge-accent" : "badge-teal"}`}>
+                            {d.salaryType === "salaried" ? "Salaried" : "Per Trip"}
+                          </span>
+                          <button className="btn btn-outline btn-sm" onClick={() => { setModal("driver"); setForm({ editDriverId: d.id, name: d.name, mobile: d.mobile, salaryType: d.salaryType, salaryAmount: d.salaryAmount }); }}>✎ Edit</button>
+                        </div>
                       </div>
                       <hr className="divider" />
                       <div style={{ display: "grid", gap: 6, fontSize: 12, marginBottom: 12 }}>
@@ -2764,8 +2787,8 @@ function UserPanel({ store, user }) {
       })()}
 
       {modal === "driver" && (
-        <Modal title="Add Driver" onClose={() => { setModal(null); setForm({}); }}
-          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitDriver}>Add Driver</button></>}>
+        <Modal title={form.editDriverId ? "Edit Driver" : "Add Driver"} onClose={() => { setModal(null); setForm({}); }}
+          footer={<><button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button><button className="btn btn-primary" onClick={submitDriver}>{form.editDriverId ? "Save Changes" : "Add Driver"}</button></>}>
           <div className="form-grid">
             <div className="fg2">
               <div><label>Full Name *</label><input placeholder="Driver's name" value={form.name || ""} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
