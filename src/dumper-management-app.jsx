@@ -1064,6 +1064,7 @@ function UserPanel({ store, user }) {
   const [submitting, setSubmitting] = useState(false);
   const [tripDetail, setTripDetail] = useState(null);
   const [driverDetail, setDriverDetail] = useState(null);
+  const [driverDetailFilter, setDriverDetailFilter] = useState({ dateFrom: '', dateTo: '' });
   const [clientDetail, setClientDetail] = useState(null);
   const [editingProfit, setEditingProfit] = useState(false);
   const [editedProfitValue, setEditedProfitValue] = useState("");
@@ -2252,7 +2253,10 @@ function UserPanel({ store, user }) {
                           + Record Payment
                         </button>
                         <button className="btn btn-outline btn-sm" style={{ flex: 1, justifyContent: "center" }}
-                          onClick={() => setDriverDetail({ driver: d, allPayments, thisMonth, salaryDue, totalPaid, remaining, driverTrips })}>
+                          onClick={() => {
+                            setDriverDetail({ driver: d, allPayments, thisMonth, driverTrips: trips.filter(t => t.driverId === d.id) });
+                            setDriverDetailFilter({ dateFrom: thisMonth + '-01', dateTo: today() });
+                          }}>
                           View Details
                         </button>
                       </div>
@@ -2870,7 +2874,17 @@ function UserPanel({ store, user }) {
       )}
 
       {driverDetail && (() => {
-        const { driver: d, allPayments, thisMonth, salaryDue, totalPaid, remaining, driverTrips } = driverDetail;
+        const { driver: d, allPayments, thisMonth, driverTrips } = driverDetail;
+        const { dateFrom: df, dateTo: dt } = driverDetailFilter;
+        const filteredTrips = driverTrips.filter(t => (!df || t.date >= df) && (!dt || t.date <= dt));
+        const filteredPayments = allPayments.filter(p => (!df || p.date >= df) && (!dt || p.date <= dt));
+        const tripCount = filteredTrips.reduce((s, t) => s + t.tripCount, 0);
+        const salaryEarned = d.salaryType === 'per_trip'
+          ? filteredTrips.reduce((s, t) => s + (t.driverTripRate || 0) * t.tripCount, 0)
+          : null;
+        const totalPaid = filteredPayments.reduce((s, p) => s + p.amount, 0);
+        const isCurrentMonth = df === thisMonth + '-01' && dt === today();
+        const rangeLabel = (!df && !dt) ? 'All Time' : isCurrentMonth ? `This Month (${thisMonth})` : `${df || '…'} → ${dt || '…'}`;
         return (
           <Modal title={`${d.name} — Driver Details`} onClose={() => setDriverDetail(null)}>
             <div style={{ display: "grid", gap: 14 }}>
@@ -2882,24 +2896,38 @@ function UserPanel({ store, user }) {
                   </div>
                 ))}
               </div>
-              <div className="card-sm" style={{ background: "var(--bg3)" }}>
-                <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>This Month ({thisMonth})</div>
-                <div className="exp-row"><span className="er-label">Trips completed</span><span className="er-val">{driverTrips.reduce((s, t) => s + t.tripCount, 0)}</span></div>
-                <div className="exp-row"><span className="er-label">Salary due</span><span className="er-val">{fmt(salaryDue)}</span></div>
-                <div className="exp-row"><span className="er-label" style={{ color: "var(--teal)" }}>Paid so far</span><span className="er-val" style={{ color: "var(--teal)" }}>{fmt(totalPaid)}</span></div>
-                <div style={{ borderTop: "1px solid var(--border2)", marginTop: 8, paddingTop: 10, display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontWeight: 600 }}>Remaining</span>
-                  <span style={{ fontFamily: "Syne", fontWeight: 700, color: remaining > 0 ? "var(--red)" : "var(--teal)" }}>{fmt(remaining)}</span>
-                </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <input type="date" className="inp" style={{ flex: 1, minWidth: 120 }}
+                  value={df} onChange={e => setDriverDetailFilter(p => ({ ...p, dateFrom: e.target.value }))} />
+                <span style={{ color: "var(--text3)", fontSize: 12 }}>to</span>
+                <input type="date" className="inp" style={{ flex: 1, minWidth: 120 }}
+                  value={dt} onChange={e => setDriverDetailFilter(p => ({ ...p, dateTo: e.target.value }))} />
+                {(df || dt) && (
+                  <button className="btn btn-outline btn-sm" onClick={() => setDriverDetailFilter({ dateFrom: '', dateTo: '' })}>All Time</button>
+                )}
               </div>
-              {driverTrips.length > 0 && (
+              <div className="card-sm" style={{ background: "var(--bg3)" }}>
+                <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>{rangeLabel}</div>
+                <div className="exp-row"><span className="er-label">Trips completed</span><span className="er-val">{tripCount}</span></div>
+                {salaryEarned !== null && (
+                  <div className="exp-row"><span className="er-label">Salary earned</span><span className="er-val">{fmt(salaryEarned)}</span></div>
+                )}
+                <div className="exp-row"><span className="er-label" style={{ color: "var(--teal)" }}>Payments received</span><span className="er-val" style={{ color: "var(--teal)" }}>{fmt(totalPaid)}</span></div>
+                {salaryEarned !== null && (
+                  <div style={{ borderTop: "1px solid var(--border2)", marginTop: 8, paddingTop: 10, display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ fontWeight: 600 }}>Balance</span>
+                    <span style={{ fontFamily: "Syne", fontWeight: 700, color: salaryEarned - totalPaid > 0 ? "var(--red)" : "var(--teal)" }}>{fmt(Math.abs(salaryEarned - totalPaid))}{salaryEarned - totalPaid > 0 ? " due" : " surplus"}</span>
+                  </div>
+                )}
+              </div>
+              {filteredTrips.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Trips this month</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Trips</div>
                   <div className="table-wrap">
                     <table>
                       <thead><tr><th>Date</th><th>Client</th><th>Vehicle</th><th>Trips</th>{d.salaryType === "per_trip" && <th>Driver Pay</th>}</tr></thead>
                       <tbody>
-                        {driverTrips.map(t => {
+                        {filteredTrips.map(t => {
                           const veh = vehicles.find(v => v.id === t.vehicleId);
                           return (
                             <tr key={t.id}>
@@ -2918,14 +2946,17 @@ function UserPanel({ store, user }) {
                   </div>
                 </div>
               )}
-              {allPayments.length > 0 && (
+              {filteredTrips.length === 0 && (
+                <div style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "10px 0" }}>No trips in this range.</div>
+              )}
+              {filteredPayments.length > 0 && (
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Payment History</div>
                   <div className="table-wrap">
                     <table>
                       <thead><tr><th>Date</th><th>Month</th><th>Amount</th><th>Note</th><th>Recorded By</th></tr></thead>
                       <tbody>
-                        {allPayments.map(p => {
+                        {filteredPayments.map(p => {
                           const recorder = partners.find(pt => pt.id === p.recordedBy);
                           return (
                             <tr key={p.id}>
@@ -2940,6 +2971,9 @@ function UserPanel({ store, user }) {
                     </table>
                   </div>
                 </div>
+              )}
+              {filteredPayments.length === 0 && (
+                <div style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "4px 0 8px" }}>No payments in this range.</div>
               )}
             </div>
           </Modal>
