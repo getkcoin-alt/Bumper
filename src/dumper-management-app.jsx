@@ -1065,6 +1065,8 @@ function UserPanel({ store, user }) {
   const [tripDetail, setTripDetail] = useState(null);
   const [driverDetail, setDriverDetail] = useState(null);
   const [driverDetailFilter, setDriverDetailFilter] = useState({ dateFrom: '', dateTo: '' });
+  const [driverSearch, setDriverSearch] = useState('');
+  const [driverTripLogFilter, setDriverTripLogFilter] = useState({ dateFrom: '', dateTo: '' });
   const [clientDetail, setClientDetail] = useState(null);
   const [editingProfit, setEditingProfit] = useState(false);
   const [editedProfitValue, setEditedProfitValue] = useState("");
@@ -2146,9 +2148,14 @@ function UserPanel({ store, user }) {
                 <h1 className="page-title">Drivers</h1>
                 <p className="page-sub">{drivers.length} registered drivers · Salary tracking</p>
               </div>
-              <button className="btn btn-primary" onClick={() => { setModal("driver"); setForm({ salaryType: "per_trip" }); }}>
-                {Icon.plus} Add Driver
-              </button>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input className="inp" placeholder="Search driver…" value={driverSearch}
+                  onChange={e => setDriverSearch(e.target.value)}
+                  style={{ width: 160, fontSize: 13 }} />
+                <button className="btn btn-primary" onClick={() => { setModal("driver"); setForm({ salaryType: "per_trip" }); }}>
+                  {Icon.plus} Add Driver
+                </button>
+              </div>
             </div>
             <div className="content">
               {drivers.length === 0 && (
@@ -2196,7 +2203,7 @@ function UserPanel({ store, user }) {
               })()}
 
               <div className="grid g3">
-                {drivers.map(d => {
+                {drivers.filter(d => !driverSearch || d.name.toLowerCase().includes(driverSearch.toLowerCase())).map(d => {
                   const thisMonth = today().slice(0, 7);
                   const driverTrips = trips.filter(t => t.driverId === d.id && t.date.startsWith(thisMonth));
                   const monthTrips = driverTrips.reduce((s, t) => s + t.tripCount, 0);
@@ -2264,6 +2271,65 @@ function UserPanel({ store, user }) {
                   );
                 })}
               </div>
+
+              {/* Driver Trip Log */}
+              {(() => {
+                const allDriverTrips = trips
+                  .filter(t => t.driverId)
+                  .map(t => ({ ...t, driverName: drivers.find(d => d.id === t.driverId)?.name || '—' }));
+                const { dateFrom: tldf, dateTo: tldt } = driverTripLogFilter;
+                const q = driverSearch.toLowerCase();
+                const filtered = allDriverTrips.filter(t =>
+                  (!q || t.driverName.toLowerCase().includes(q)) &&
+                  (!tldf || t.date >= tldf) &&
+                  (!tldt || t.date <= tldt)
+                ).sort((a, b) => b.date.localeCompare(a.date));
+                return (
+                  <div className="card" style={{ marginTop: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
+                      <h3 style={{ fontSize: 14, margin: 0 }}>Trip Log — All Drivers</h3>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <input type="date" className="inp" style={{ fontSize: 12 }}
+                          value={tldf} onChange={e => setDriverTripLogFilter(p => ({ ...p, dateFrom: e.target.value }))} />
+                        <span style={{ fontSize: 12, color: "var(--text3)" }}>to</span>
+                        <input type="date" className="inp" style={{ fontSize: 12 }}
+                          value={tldt} onChange={e => setDriverTripLogFilter(p => ({ ...p, dateTo: e.target.value }))} />
+                        {(tldf || tldt) && (
+                          <button className="btn btn-outline btn-sm" onClick={() => setDriverTripLogFilter({ dateFrom: '', dateTo: '' })}>Clear</button>
+                        )}
+                      </div>
+                    </div>
+                    {filtered.length === 0 ? (
+                      <div style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: "14px 0" }}>No trips found.</div>
+                    ) : (
+                      <div className="table-wrap">
+                        <table>
+                          <thead>
+                            <tr><th>Date</th><th>Driver</th><th>Client</th><th>Vehicle</th><th>Trips</th><th>Driver Pay</th></tr>
+                          </thead>
+                          <tbody>
+                            {filtered.map(t => {
+                              const drv = drivers.find(d => d.id === t.driverId);
+                              const veh = vehicles.find(v => v.id === t.vehicleId);
+                              const pay = drv?.salaryType === 'per_trip' ? (t.driverTripRate || 0) * t.tripCount : null;
+                              return (
+                                <tr key={t.id}>
+                                  <td>{t.date}</td>
+                                  <td className="td-bold">{t.driverName}</td>
+                                  <td>{t.clientName}</td>
+                                  <td style={{ fontSize: 11 }}>{veh?.number || '—'}</td>
+                                  <td>{t.tripCount}</td>
+                                  <td className="td-teal">{pay !== null ? fmt(pay) : '—'}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </>
         )}
