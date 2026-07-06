@@ -8,6 +8,7 @@ export const dbToApp = {
   firm: (db) => ({
     id: db.id,
     name: db.name,
+    linkToken: db.link_token || '',
     createdAt: db.created_at,
   }),
 

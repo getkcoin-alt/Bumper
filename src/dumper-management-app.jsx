@@ -440,6 +440,20 @@ function useStore() {
     }
   };
 
+  const regenerateFirmToken = async (firmId) => {
+    try {
+      const newToken = crypto.randomUUID();
+      const { error } = await supabase.from('firms').update({ link_token: newToken }).eq('id', firmId);
+      if (error) throw error;
+      setFirms(p => p.map(f => f.id === firmId ? { ...f, linkToken: newToken } : f));
+      return newToken;
+    } catch (error) {
+      console.error('Error regenerating token:', error);
+      alert('Failed to regenerate link');
+      throw error;
+    }
+  };
+
   const addUser = async (data) => {
     try {
       const { data: dbData, error } = await supabase
@@ -756,7 +770,7 @@ function useStore() {
     firms, users, vehicles, expenses, trips, transactions, drivers, driverPayments, clients, currentUser, setCurrentUser, loading,
 
     firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions, firmDrivers, firmDriverPayments, firmClients,
-    addFirm, addUser, updateUserPin, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction, addDriver, updateDriver, addDriverPayment, addClient, updateClient,
+    addFirm, regenerateFirmToken, addUser, updateUserPin, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction, addDriver, updateDriver, addDriverPayment, addClient, updateClient,
     calcTrip, firmSummary, resetAllData,
   };
 }
@@ -797,7 +811,8 @@ function calcEmi(v) {
 const ADMIN_PIN_KEY = 'dumpertrack_admin_pin';
 const getAdminPin = () => localStorage.getItem(ADMIN_PIN_KEY) || '9696';
 
-function LoginScreen({ users, firms, onLogin }) {
+function LoginScreen({ users, firms, firmToken, onLogin }) {
+  const matchedFirm = firmToken ? firms.find(f => f.linkToken === firmToken) : null;
   const [firmFilter, setFirmFilter] = useState("all");
   const [pinFor, setPinFor] = useState(null);
   const [pinInput, setPinInput] = useState('');
@@ -805,7 +820,11 @@ function LoginScreen({ users, firms, onLogin }) {
   const [adminPinMode, setAdminPinMode] = useState(false);
   const [adminPinInput, setAdminPinInput] = useState('');
   const [adminPinError, setAdminPinError] = useState(false);
-  const visible = firmFilter === "all" ? users : users.filter(u => u.firmId === firmFilter);
+
+  // Firm link mode: only show this firm's partners
+  const visible = matchedFirm
+    ? users.filter(u => u.firmId === matchedFirm.id)
+    : firmFilter === "all" ? users : users.filter(u => u.firmId === firmFilter);
 
   const handleAdminClick = () => {
     setAdminPinMode(true);
@@ -882,10 +901,10 @@ function LoginScreen({ users, firms, onLogin }) {
       <div className="login-panel">
         <div className="login-panel-inner">
           <div className="lp-heading">Welcome back</div>
-          <div className="lp-sub">Select your profile to continue</div>
+          <div className="lp-sub">{matchedFirm ? matchedFirm.name : "Select your profile to continue"}</div>
 
-          {/* Admin access */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          {/* Admin access — hidden on firm-specific links */}
+          {!matchedFirm && <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             <button className="lp-admin" onClick={handleAdminClick} style={{ borderBottomLeftRadius: adminPinMode ? 0 : undefined, borderBottomRightRadius: adminPinMode ? 0 : undefined }}>
               <div className="lp-admin-icon">{Icon.admin}</div>
               <div className="lp-admin-text">
@@ -912,14 +931,12 @@ function LoginScreen({ users, firms, onLogin }) {
             {adminPinMode && adminPinError && (
               <div style={{ fontSize: 11, color: "var(--red)", textAlign: "center", marginTop: 4 }}>Wrong PIN. Try again.</div>
             )}
-          </div>
+          </div>}
 
-          <div className="lp-divider">
-            <hr /><span>Partners</span><hr />
-          </div>
+          {!matchedFirm && <div className="lp-divider"><hr /><span>Partners</span><hr /></div>}
 
-          {/* Firm filter — only shown when multiple firms exist */}
-          {firms.length > 1 && (
+          {/* Firm filter — only shown when multiple firms exist and not on a firm-specific link */}
+          {!matchedFirm && firms.length > 1 && (
             <div style={{ marginBottom: 12 }}>
               <select value={firmFilter} onChange={e => setFirmFilter(e.target.value)} style={{ width: "100%", fontSize: 12 }}>
                 <option value="all">All Firms</option>
@@ -928,8 +945,15 @@ function LoginScreen({ users, firms, onLogin }) {
             </div>
           )}
 
+          {/* Invalid firm token */}
+          {firmToken && !matchedFirm && (
+            <div className="empty" style={{ padding: "28px 0" }}>
+              <p style={{ color: "var(--red)" }}>This link is invalid or has been revoked. Please contact your admin.</p>
+            </div>
+          )}
+
           {/* Partner cards */}
-          <div className="lp-partners">
+          {(!firmToken || matchedFirm) && <div className="lp-partners">
             {visible.length === 0 && (
               <div className="empty" style={{ padding: "28px 0" }}>
                 <p>No partners yet. Use Admin Panel to add partners.</p>
@@ -944,10 +968,10 @@ function LoginScreen({ users, firms, onLogin }) {
                     <div className="lp-avatar">{u.name[0].toUpperCase()}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="lp-name">{u.name}</div>
-                      <div className="lp-meta">
+                      {!matchedFirm && <div className="lp-meta">
                         <span className="lp-firm-dot" />
                         <span>{firm?.name}</span>
-                      </div>
+                      </div>}
                     </div>
                     {u.mobile && <div className="lp-mobile-hint">{u.mobile}</div>}
                     {u.pin ? <div style={{ fontSize: 14, opacity: 0.6 }}>🔒</div> : <div className="lp-arrow">›</div>}
@@ -973,7 +997,7 @@ function LoginScreen({ users, firms, onLogin }) {
                 </div>
               );
             })}
-          </div>
+          </div>}
         </div>
       </div>
     </div>
@@ -990,6 +1014,7 @@ function AdminPanel({ store }) {
   const [pinEdit, setPinEdit] = useState(null);
   const [pinVal, setPinVal] = useState('');
   const [pinSaving, setPinSaving] = useState(false);
+  const [newFirmLink, setNewFirmLink] = useState(null);
 
   const handleReset = async () => {
     if (resetConfirm !== "RESET") return;
@@ -1007,10 +1032,11 @@ function AdminPanel({ store }) {
     { id: "users", label: "Partners", icon: Icon.people },
   ];
 
-  const submitFirm = () => {
+  const submitFirm = async () => {
     if (!form.name?.trim()) return;
-    store.addFirm(form.name.trim());
+    const firm = await store.addFirm(form.name.trim());
     setModal(null); setForm({});
+    if (firm?.linkToken) setNewFirmLink({ name: firm.name, token: firm.linkToken });
   };
 
   const submitUser = () => {
@@ -1060,22 +1086,34 @@ function AdminPanel({ store }) {
 
         <div className="content">
           {tab === "firms" && (
-            <div className="card">
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>#</th><th>Firm Name</th><th>Partners</th><th>Created</th></tr></thead>
-                  <tbody>
-                    {store.firms.map((f, i) => (
-                      <tr key={f.id}>
-                        <td className="td-bold">{i + 1}</td>
-                        <td className="td-bold">{f.name}</td>
-                        <td><span className="badge badge-teal">{store.firmUsers(f.id).length} partners</span></td>
-                        <td>{f.createdAt}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div style={{ display: "grid", gap: 12 }}>
+              {store.firms.map((f, i) => {
+                const link = f.linkToken ? `${window.location.origin}/?firm=${f.linkToken}` : null;
+                return (
+                  <div key={f.id} className="card">
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontFamily: "Syne", fontSize: 15 }}>{f.name}</div>
+                        <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{store.firmUsers(f.id).length} partners · Created {f.createdAt?.slice(0, 10)}</div>
+                      </div>
+                      <span className="badge badge-teal">{i + 1}</span>
+                    </div>
+                    {link && (
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--bg3)", borderRadius: "var(--radius-sm)", padding: "8px 10px", flexWrap: "wrap" }}>
+                        <div style={{ flex: 1, minWidth: 0, fontSize: 11, color: "var(--text3)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{link}</div>
+                        <button className="btn btn-outline btn-sm" onClick={() => { navigator.clipboard.writeText(link); }}>Copy Link</button>
+                        <button className="btn btn-outline btn-sm" style={{ color: "var(--text3)", fontSize: 11 }}
+                          onClick={async () => { if (confirm('Regenerate link? The old link will stop working.')) { await store.regenerateFirmToken(f.id); } }}>
+                          Regenerate
+                        </button>
+                      </div>
+                    )}
+                    {!link && (
+                      <div style={{ fontSize: 11, color: "var(--text3)" }}>No link yet — apply the migration in Supabase to generate links.</div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -1150,6 +1188,26 @@ function AdminPanel({ store }) {
           </div>
         </Modal>
       )}
+
+      {newFirmLink && (() => {
+        const link = `${window.location.origin}/?firm=${newFirmLink.token}`;
+        return (
+          <Modal title="Firm Created — Share This Link" onClose={() => setNewFirmLink(null)}
+            footer={<button className="btn btn-primary" onClick={() => setNewFirmLink(null)}>Done</button>}>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div style={{ fontSize: 13, color: "var(--text2)" }}>
+                <strong>{newFirmLink.name}</strong> has been created. Share this unique link with the firm's partners — it's the only way they can access their account.
+              </div>
+              <div style={{ background: "var(--bg3)", borderRadius: "var(--radius)", padding: "12px 14px" }}>
+                <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".7px" }}>Access Link</div>
+                <div style={{ fontFamily: "monospace", fontSize: 12, wordBreak: "break-all", color: "var(--accent)", marginBottom: 10 }}>{link}</div>
+                <button className="btn btn-primary btn-sm" onClick={() => { navigator.clipboard.writeText(link); }}>Copy Link</button>
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text3)" }}>This link is also available anytime in the Firms tab. You can regenerate it if it's ever compromised.</div>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {modal === "users" && (
         <Modal title="Add Partner" onClose={() => setModal(null)}
@@ -3338,6 +3396,7 @@ function UserPanel({ store, user }) {
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const store = useStore();
+  const firmToken = new URLSearchParams(window.location.search).get('firm');
 
   if (store.loading) {
     return (
@@ -3355,7 +3414,7 @@ export default function App() {
   }
 
   if (!store.currentUser) {
-    return <LoginScreen users={store.users} firms={store.firms} onLogin={store.setCurrentUser} />;
+    return <LoginScreen users={store.users} firms={store.firms} firmToken={firmToken} onLogin={store.setCurrentUser} />;
   }
   if (store.currentUser.role === "admin") {
     return <AdminPanel store={store} />;
