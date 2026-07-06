@@ -17,6 +17,7 @@ export const dbToApp = {
     mobile: db.mobile,
     firmId: db.firm_id,
     role: db.role,
+    pin: db.pin || '',
     createdAt: db.created_at,
   }),
 

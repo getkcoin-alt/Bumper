@@ -458,6 +458,18 @@ function useStore() {
     }
   };
 
+  const updateUserPin = async (userId, pin) => {
+    try {
+      const { error } = await supabase.from('users').update({ pin }).eq('id', userId);
+      if (error) throw error;
+      setUsers(p => p.map(u => u.id === userId ? { ...u, pin } : u));
+    } catch (error) {
+      console.error('Error updating PIN:', error);
+      alert('Failed to update PIN');
+      throw error;
+    }
+  };
+
   const addVehicle = async (data) => {
     try {
       const { data: dbData, error } = await supabase
@@ -744,7 +756,7 @@ function useStore() {
     firms, users, vehicles, expenses, trips, transactions, drivers, driverPayments, clients, currentUser, setCurrentUser, loading,
 
     firmUsers, firmVehicles, firmExpenses, firmTrips, firmTransactions, firmDrivers, firmDriverPayments, firmClients,
-    addFirm, addUser, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction, addDriver, updateDriver, addDriverPayment, addClient, updateClient,
+    addFirm, addUser, updateUserPin, addVehicle, updateVehicle, addExpense, addTrip, updateTripProfit, updateClientPaid, addTransaction, addDriver, updateDriver, addDriverPayment, addClient, updateClient,
     calcTrip, firmSummary, resetAllData,
   };
 }
@@ -784,7 +796,27 @@ function calcEmi(v) {
 // ── Login Screen ──────────────────────────────────────────────────────────────
 function LoginScreen({ users, firms, onLogin }) {
   const [firmFilter, setFirmFilter] = useState("all");
+  const [pinFor, setPinFor] = useState(null);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(false);
   const visible = firmFilter === "all" ? users : users.filter(u => u.firmId === firmFilter);
+
+  const handleCardClick = (u) => {
+    if (!u.pin) { onLogin(u); return; }
+    setPinFor(u);
+    setPinInput('');
+    setPinError(false);
+  };
+
+  const handlePinChange = (u, val) => {
+    const digits = val.replace(/\D/g, '').slice(0, 4);
+    setPinInput(digits);
+    setPinError(false);
+    if (digits.length === 4) {
+      if (digits === u.pin) { onLogin(u); }
+      else { setPinError(true); setTimeout(() => { setPinInput(''); setPinError(false); }, 900); }
+    }
+  };
 
   return (
     <div className="login-page">
@@ -863,19 +895,40 @@ function LoginScreen({ users, firms, onLogin }) {
             )}
             {visible.map(u => {
               const firm = firms.find(f => f.id === u.firmId);
+              const isEnteringPin = pinFor?.id === u.id;
               return (
-                <button key={u.id} className="lp-card" onClick={() => onLogin(u)}>
-                  <div className="lp-avatar">{u.name[0].toUpperCase()}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="lp-name">{u.name}</div>
-                    <div className="lp-meta">
-                      <span className="lp-firm-dot" />
-                      <span>{firm?.name}</span>
+                <div key={u.id} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                  <button className="lp-card" onClick={() => handleCardClick(u)} style={{ borderBottomLeftRadius: isEnteringPin ? 0 : undefined, borderBottomRightRadius: isEnteringPin ? 0 : undefined }}>
+                    <div className="lp-avatar">{u.name[0].toUpperCase()}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="lp-name">{u.name}</div>
+                      <div className="lp-meta">
+                        <span className="lp-firm-dot" />
+                        <span>{firm?.name}</span>
+                      </div>
                     </div>
-                  </div>
-                  {u.mobile && <div className="lp-mobile-hint">{u.mobile}</div>}
-                  <div className="lp-arrow">›</div>
-                </button>
+                    {u.mobile && <div className="lp-mobile-hint">{u.mobile}</div>}
+                    {u.pin ? <div style={{ fontSize: 14, opacity: 0.6 }}>🔒</div> : <div className="lp-arrow">›</div>}
+                  </button>
+                  {isEnteringPin && (
+                    <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderTop: "none", borderBottomLeftRadius: "var(--radius)", borderBottomRightRadius: "var(--radius)", padding: "10px 14px", display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder="Enter PIN"
+                        value={pinInput}
+                        autoFocus
+                        onChange={e => handlePinChange(u, e.target.value)}
+                        style={{ flex: 1, letterSpacing: "0.4em", textAlign: "center", borderColor: pinError ? "var(--red)" : undefined, transition: "border-color 0.2s" }}
+                      />
+                      <button className="btn btn-outline btn-sm" onClick={() => { setPinFor(null); setPinInput(''); setPinError(false); }}>Cancel</button>
+                    </div>
+                  )}
+                  {isEnteringPin && pinError && (
+                    <div style={{ fontSize: 11, color: "var(--red)", textAlign: "center", marginTop: 4 }}>Wrong PIN. Try again.</div>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -892,6 +945,9 @@ function AdminPanel({ store }) {
   const [form, setForm] = useState({});
   const [resetConfirm, setResetConfirm] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [pinEdit, setPinEdit] = useState(null);
+  const [pinVal, setPinVal] = useState('');
+  const [pinSaving, setPinSaving] = useState(false);
 
   const handleReset = async () => {
     if (resetConfirm !== "RESET") return;
@@ -978,28 +1034,66 @@ function AdminPanel({ store }) {
             </div>
           )}
 
-          {tab === "users" && (
-            <div className="card">
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>#</th><th>Name</th><th>Mobile</th><th>Firm</th></tr></thead>
-                  <tbody>
-                    {store.users.map((u, i) => {
-                      const firm = store.firms.find(f => f.id === u.firmId);
-                      return (
-                        <tr key={u.id}>
-                          <td className="td-bold">{i + 1}</td>
-                          <td className="td-bold">{u.name}</td>
-                          <td>{u.mobile}</td>
-                          <td><span className="badge badge-accent">{firm?.name}</span></td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+          {tab === "users" && (() => {
+            const savePin = async (u) => {
+              if (pinVal.length > 0 && pinVal.length !== 4) { alert('PIN must be exactly 4 digits'); return; }
+              setPinSaving(true);
+              try {
+                await store.updateUserPin(u.id, pinVal);
+                setPinEdit(null);
+                setPinVal('');
+              } catch (_) {} finally { setPinSaving(false); }
+            };
+            return (
+              <div className="grid g2" style={{ gap: 12 }}>
+                {store.users.map(u => {
+                  const firm = store.firms.find(f => f.id === u.firmId);
+                  const isEditing = pinEdit === u.id;
+                  return (
+                    <div key={u.id} className="card-sm" style={{ background: "var(--bg2)", border: "1px solid var(--border)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--accent-dim)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontFamily: "Syne", flexShrink: 0 }}>
+                          {u.name[0].toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{u.name}</div>
+                          <div style={{ fontSize: 11, color: "var(--text3)" }}>{u.mobile || '—'} · {firm?.name}</div>
+                        </div>
+                        {u.pin ? (
+                          <span className="badge badge-teal" style={{ fontSize: 10 }}>PIN set</span>
+                        ) : (
+                          <span className="badge badge-gray" style={{ fontSize: 10 }}>No PIN</span>
+                        )}
+                      </div>
+                      {isEditing ? (
+                        <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}>
+                          <input
+                            type="password"
+                            inputMode="numeric"
+                            maxLength={4}
+                            placeholder="4-digit PIN"
+                            value={pinVal}
+                            autoFocus
+                            onChange={e => setPinVal(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                            onKeyDown={e => { if (e.key === 'Enter') savePin(u); if (e.key === 'Escape') { setPinEdit(null); setPinVal(''); } }}
+                            style={{ flex: 1, letterSpacing: "0.3em", textAlign: "center" }}
+                          />
+                          <button className="btn btn-primary btn-sm" onClick={() => savePin(u)} disabled={pinSaving}>Save</button>
+                          {u.pin && <button className="btn btn-outline btn-sm" style={{ color: "var(--red)" }} onClick={async () => { setPinSaving(true); try { await store.updateUserPin(u.id, ''); setPinEdit(null); setPinVal(''); } catch (_) {} finally { setPinSaving(false); } }}>Clear</button>}
+                          <button className="btn btn-outline btn-sm" onClick={() => { setPinEdit(null); setPinVal(''); }}>✕</button>
+                        </div>
+                      ) : (
+                        <button className="btn btn-outline btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 4 }}
+                          onClick={() => { setPinEdit(u.id); setPinVal(''); }}>
+                          {u.pin ? 'Change PIN' : 'Set PIN'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 
