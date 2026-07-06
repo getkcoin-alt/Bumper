@@ -794,12 +794,34 @@ function calcEmi(v) {
 }
 
 // ── Login Screen ──────────────────────────────────────────────────────────────
+const ADMIN_PIN_KEY = 'dumpertrack_admin_pin';
+const getAdminPin = () => localStorage.getItem(ADMIN_PIN_KEY) || '9696';
+
 function LoginScreen({ users, firms, onLogin }) {
   const [firmFilter, setFirmFilter] = useState("all");
   const [pinFor, setPinFor] = useState(null);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
+  const [adminPinMode, setAdminPinMode] = useState(false);
+  const [adminPinInput, setAdminPinInput] = useState('');
+  const [adminPinError, setAdminPinError] = useState(false);
   const visible = firmFilter === "all" ? users : users.filter(u => u.firmId === firmFilter);
+
+  const handleAdminClick = () => {
+    setAdminPinMode(true);
+    setAdminPinInput('');
+    setAdminPinError(false);
+  };
+
+  const handleAdminPinChange = (val) => {
+    const digits = val.replace(/\D/g, '').slice(0, 4);
+    setAdminPinInput(digits);
+    setAdminPinError(false);
+    if (digits.length === 4) {
+      if (digits === getAdminPin()) { onLogin({ id: "admin", name: "Admin", role: "admin" }); }
+      else { setAdminPinError(true); setTimeout(() => { setAdminPinInput(''); setAdminPinError(false); }, 900); }
+    }
+  };
 
   const handleCardClick = (u) => {
     if (!u.pin) { onLogin(u); return; }
@@ -863,14 +885,34 @@ function LoginScreen({ users, firms, onLogin }) {
           <div className="lp-sub">Select your profile to continue</div>
 
           {/* Admin access */}
-          <button className="lp-admin" onClick={() => onLogin({ id: "admin", name: "Admin", role: "admin" })}>
-            <div className="lp-admin-icon">{Icon.admin}</div>
-            <div className="lp-admin-text">
-              <div className="t">Admin Panel</div>
-              <div className="s">Manage firms & partners</div>
-            </div>
-            <div className="lp-admin-arrow">›</div>
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            <button className="lp-admin" onClick={handleAdminClick} style={{ borderBottomLeftRadius: adminPinMode ? 0 : undefined, borderBottomRightRadius: adminPinMode ? 0 : undefined }}>
+              <div className="lp-admin-icon">{Icon.admin}</div>
+              <div className="lp-admin-text">
+                <div className="t">Admin Panel</div>
+                <div className="s">Manage firms & partners</div>
+              </div>
+              <div className="lp-admin-arrow">🔒</div>
+            </button>
+            {adminPinMode && (
+              <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderTop: "none", borderBottomLeftRadius: "var(--radius)", borderBottomRightRadius: "var(--radius)", padding: "10px 14px", display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="Admin PIN"
+                  value={adminPinInput}
+                  autoFocus
+                  onChange={e => handleAdminPinChange(e.target.value)}
+                  style={{ flex: 1, letterSpacing: "0.4em", textAlign: "center", borderColor: adminPinError ? "var(--red)" : undefined }}
+                />
+                <button className="btn btn-outline btn-sm" onClick={() => { setAdminPinMode(false); setAdminPinInput(''); setAdminPinError(false); }}>Cancel</button>
+              </div>
+            )}
+            {adminPinMode && adminPinError && (
+              <div style={{ fontSize: 11, color: "var(--red)", textAlign: "center", marginTop: 4 }}>Wrong PIN. Try again.</div>
+            )}
+          </div>
 
           <div className="lp-divider">
             <hr /><span>Partners</span><hr />
@@ -993,6 +1035,9 @@ function AdminPanel({ store }) {
           </button>
         ))}
         <div className="sidebar-footer">
+          <button className="btn btn-outline btn-sm" style={{ width: "100%", marginBottom: 6, justifyContent: "center" }} onClick={() => setModal("adminPin")}>
+            🔒 Change Admin PIN
+          </button>
           <button className="btn btn-danger btn-sm" style={{ width: "100%", marginBottom: 8, justifyContent: "center" }} onClick={() => { setModal("reset"); setResetConfirm(""); }}>
             ⚠ Reset All Data
           </button>
@@ -1118,6 +1163,33 @@ function AdminPanel({ store }) {
                 {store.firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
               </select>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {modal === "adminPin" && (
+        <Modal title="Change Admin PIN" onClose={() => { setModal(null); setForm({}); }}
+          footer={
+            <>
+              <button className="btn btn-outline" onClick={() => { setModal(null); setForm({}); }}>Cancel</button>
+              <button className="btn btn-primary" onClick={() => {
+                const p = (form.newAdminPin || '').replace(/\D/g, '');
+                if (p.length !== 4) { alert('PIN must be exactly 4 digits'); return; }
+                localStorage.setItem(ADMIN_PIN_KEY, p);
+                setModal(null); setForm({});
+                alert('Admin PIN updated.');
+              }}>Save PIN</button>
+            </>
+          }>
+          <div className="form-grid">
+            <div>
+              <label>New 4-digit Admin PIN</label>
+              <input type="password" inputMode="numeric" maxLength={4} placeholder="e.g. 9696"
+                value={form.newAdminPin || ''}
+                onChange={e => setForm(p => ({ ...p, newAdminPin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                style={{ letterSpacing: "0.4em", textAlign: "center" }} />
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text3)" }}>Current PIN is used to access the Admin Panel from the login screen.</div>
           </div>
         </Modal>
       )}
