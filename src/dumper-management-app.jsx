@@ -809,6 +809,7 @@ function calcEmi(v) {
 
 // ── Login Screen ──────────────────────────────────────────────────────────────
 const ADMIN_PIN_KEY = 'dumpertrack_admin_pin';
+const TX_LIMIT = 2000;
 const getAdminPin = () => localStorage.getItem(ADMIN_PIN_KEY) || '9696';
 
 function LoginScreen({ users, firms, firmToken, onLogin }) {
@@ -1453,6 +1454,7 @@ function UserPanel({ store, user }) {
   };
 
   const submitTransaction = async () => {
+    if (transactions.filter(tx => tx.firmId === user.firmId).length >= TX_LIMIT) return;
     if (!form.type || !form.amount || !form.category?.trim() || !form.date) {
       return alert("Fill all required fields.");
     }
@@ -1996,18 +1998,32 @@ function UserPanel({ store, user }) {
           );
         })()}
 
-        {tab === "transactions" && (
+        {tab === "transactions" && (() => {
+          const firmTxCount = transactions.filter(tx => tx.firmId === user.firmId).length;
+          const txLimitReached = firmTxCount >= TX_LIMIT;
+          return (
           <>
             <div className="topbar">
               <div>
                 <h1 className="page-title">Credit & Debit</h1>
                 <p className="page-sub">{transactions.length} transactions · Affects total income</p>
               </div>
-              <button className="btn btn-primary" onClick={() => { setModal("transaction"); setForm({ partnerId: user.id, date: today(), type: "credit" }); }}>
+              <button className="btn btn-primary" disabled={txLimitReached}
+                onClick={() => { setModal("transaction"); setForm({ partnerId: user.id, date: today(), type: "credit" }); }}>
                 {Icon.plus} Add Transaction
               </button>
             </div>
             <div className="content">
+              {txLimitReached && (
+                <div style={{ background: "var(--red-dim)", border: "1px solid var(--red)", borderRadius: "var(--radius)", padding: "14px 18px", marginBottom: 16, fontFamily: "monospace", fontSize: 12 }}>
+                  <div style={{ color: "var(--red)", fontWeight: 700, marginBottom: 6, fontSize: 13 }}>ERR_LIMIT_EXCEEDED [TX-{TX_LIMIT}]</div>
+                  <div style={{ color: "var(--text2)", lineHeight: 1.7 }}>
+                    Maximum transaction entries reached for this account.<br />
+                    No new entries can be recorded until the account is upgraded.<br />
+                    <strong>Contact your service provider to continue.</strong>
+                  </div>
+                </div>
+              )}
               <div className="grid g3" style={{ marginBottom: 20 }}>
                 <div className="stat-card teal">
                   <div className="stat-label">Total Credits</div>
@@ -2363,7 +2379,8 @@ function UserPanel({ store, user }) {
               })()}
             </div>
           </>
-        )}
+          );
+        })()}
 
         {tab === "drivers" && (
           <>
