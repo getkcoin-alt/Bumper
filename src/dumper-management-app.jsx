@@ -999,6 +999,19 @@ function LoginScreen({ users, firms, firmToken, onLogin }) {
               );
             })}
           </div>}
+
+          <div style={{ marginTop: 24, textAlign: "center", fontSize: 11, color: "var(--text3)", lineHeight: 1.6 }}>
+            Design &amp; Developed by{" "}
+            <a href="https://www.Karnveer.com" target="_blank" rel="noopener noreferrer"
+              style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "none" }}>
+              Karnveer Singh
+            </a>
+            {" · "}
+            <a href="https://www.Karnveer.com" target="_blank" rel="noopener noreferrer"
+              style={{ color: "var(--text3)", textDecoration: "none" }}>
+              www.Karnveer.com
+            </a>
+          </div>
         </div>
       </div>
     </div>
