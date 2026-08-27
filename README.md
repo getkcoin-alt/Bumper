@@ -52,10 +52,13 @@ npm install
 ### 3. Configure Environment
 Your `.env` file should have:
 ```env
-VITE_SUPABASE_URL=https://afedbnmsltwifwrcvnrn.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_KTagvRQ4Pto2Q1rj9i1xBg_TISHFLms
-DATABASE_URL=postgresql://postgres:5#FfR74fj-m5X@w@db.afedbnmsltwifwrcvnrn.supabase.co:5432/postgres
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<your-publishable-key>
 ```
+
+Only the project URL and publishable key belong in frontend configuration. Never put a database password, connection string, or service-role key in a `VITE_*` variable: these variables are included in the browser bundle. Keep any `DATABASE_URL` needed by trusted database tooling in an untracked local environment or a server-side secret store.
+
+**Security remediation:** A database credential was previously committed to this repository. Removing it here does not revoke it or remove it from Git history. Rotate the exposed database password in Supabase, update legitimate server-side consumers, and coordinate historical secret removal separately.
 
 ### 4. Run Development Server
 ```bash
